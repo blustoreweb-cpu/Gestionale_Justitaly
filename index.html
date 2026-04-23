@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JIT Pro — Accesso</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/js/config.js"></script>
+</head>
+<body>
+<div class="login-bg">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div>
+        <div class="login-brand">JIT <span>Pro</span></div>
+        <div class="login-tagline">Gestionale Produzione</div>
+      </div>
+    </div>
+
+    <div id="login-error" class="login-error"></div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label class="login-label">Email</label>
+        <input class="form-inp w-full" type="email" id="email" placeholder="nome@azienda.it" autocomplete="email">
+      </div>
+      <div>
+        <label class="login-label">Password</label>
+        <input class="form-inp w-full" type="password" id="pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-lg w-full mt-8" id="login-btn" onclick="doLogin()">
+        Accedi
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Se già loggato, redirect diretto
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (session) window.location.href = '/dashboard.html';
+  });
+
+  document.getElementById('pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  async function doLogin() {
+    const email = document.getElementById('email').value.trim();
+    const pass  = document.getElementById('pass').value;
+    const btn   = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+
+    if (!email || !pass) { showErr('Inserisci email e password.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Accesso in corso…';
+    errEl.classList.remove('show');
+
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      showErr('Credenziali non valide. Riprova.');
+      btn.disabled = false;
+      btn.textContent = 'Accedi';
+    } else {
+      window.location.href = '/dashboard.html';
+    }
+  }
+
+  function showErr(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+</script>
+</body>
+</html>

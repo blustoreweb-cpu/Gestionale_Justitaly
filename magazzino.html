@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magazzino — JIT Gestionale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div id="nav"></div>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 class="page-title">Magazzino</h1>
+        <span class="page-subtitle" id="mag-subtitle">—</span>
+      </div>
+      <div class="topbar-right">
+        <span id="alert-pill" class="alert-pill" style="display:none" onclick="window.location='magazzino.html'">
+          ⚠ <span id="alert-count">0</span> sotto soglia
+        </span>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('m-add-prod')">+ Prodotto</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <input class="filter-input" id="search-mag" type="search" placeholder="Cerca codice, descrizione…" oninput="renderMagazzino()">
+      <select class="filter-select" id="fil-cat" onchange="renderMagazzino()">
+        <option value="">Tutte le categorie</option>
+        <option>Chip</option>
+        <option>SIM</option>
+        <option>Inlay</option>
+        <option>PVC</option>
+        <option>Ribbon</option>
+        <option>Antenna</option>
+        <option>Keyfob</option>
+        <option>Nastro</option>
+        <option>Etichette</option>
+        <option>Consumabili</option>
+        <option>Packaging</option>
+      </select>
+      <select class="filter-select" id="fil-stato-mag" onchange="renderMagazzino()">
+        <option value="">Tutti gli stati</option>
+        <option value="low">Sotto soglia</option>
+        <option value="ok">Disponibile</option>
+      </select>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row" id="mag-stats"></div>
+
+    <!-- Table -->
+    <div class="table-wrap" id="mag-table-wrap">
+      <table class="data-table" id="mag-table">
+        <thead>
+          <tr>
+            <th>Codice JIT</th>
+            <th>Descrizione</th>
+            <th>Categoria</th>
+            <th class="text-right">Quantità</th>
+            <th class="text-right">Soglia</th>
+            <th class="text-right">Giacenza %</th>
+            <th>Unità</th>
+            <th>Fornitore</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody id="mag-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="mag-empty" style="display:none">
+        <div class="empty-icon">📦</div>
+        <div class="empty-title">Nessun prodotto trovato</div>
+        <div class="empty-sub">Prova a cambiare i filtri o aggiungi un nuovo prodotto</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal: Add / Edit Prodotto -->
+<div class="modal-overlay" id="m-add-prod">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title" id="prod-modal-title">Nuovo Prodotto</div>
+      <button class="modal-close" onclick="closeModal('m-add-prod')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="prod-edit-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Codice JIT *</label>
+          <input class="form-input font-mono" id="prod-codice" type="text" placeholder="JIT-XXXX-0001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoria *</label>
+          <select class="form-input" id="prod-cat">
+            <option value="">Seleziona…</option>
+            <option>Chip</option><option>SIM</option><option>Inlay</option>
+            <option>PVC</option><option>Ribbon</option><option>Antenna</option>
+            <option>Keyfob</option><option>Nastro</option><option>Etichette</option>
+            <option>Consumabili</option><option>Packaging</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrizione *</label>
+        <input class="form-input" id="prod-desc" type="text" placeholder="es. Chip MIFARE Classic 1K 13.56MHz">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Quantità</label>
+          <input class="form-input" id="prod-qty" type="number" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Soglia minima</label>
+          <input class="form-input" id="prod-soglia" type="number" min="0" value="1000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unità</label>
+          <select class="form-input" id="prod-um">
+            <option>pz</option><option>m</option><option>kg</option><option>rotolo</option><option>conf</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fornitore</label>
+          <input class="form-input" id="prod-forn" type="text" placeholder="es. NXP Semiconductors">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note</label>
+          <input class="form-input" id="prod-note" type="text" placeholder="Opzionale">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('m-add-prod')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaProdotto()">Salva Prodotto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Carico / Scarico -->
+<div class="modal-overlay" id="m-movimento">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="mov-title">Movimento Magazzino</div>
+      <button class="modal-close" onclick="closeModal('m-movimento')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="mov-prod-info" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:1.25rem;font-size:13px"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tipo *</label>
+          <select class="form-input" id="mov-tipo" onchange="updateMovSign()">
+            <option value="carico">📥 Carico</option>
+            <option value="scarico">📤 Scarico</option>
+            <option value="rettifica">⚙ Rettifica</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantità *</label>
+          <input class="form-input" id="mov-qty" type="number" min="1" placeholder="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Causale</label>
+        <input class="form-input" id="mov-causale" type="text" placeholder="es. Acquisto da fornitore, Rettifica inventario…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('m-movimento')">Annulla</button>
+      <button class="btn btn-primary" id="mov-btn" onclick="salvaMovimento()">Registra Carico</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Storico movimenti -->
+<div class="modal-overlay" id="m-storico">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="storico-title">Storico Movimenti</div>
+        <div class="modal-sub" id="storico-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('m-storico')">✕</button>
+    </div>
+    <div class="modal-body" id="storico-body">
+      <div class="loading-state"><span class="spinner"></span> Caricamento…</div>
+    </div>
+  </div>
+</div>
+
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/nav.js"></script>
+<script>
+let _movCodice = null;
+let _prodotti = [];
+
+async function init() {
+  await AUTH.require();
+  await AUTH.initNav();
+  NAV.init('magazzino');
+  await loadMagazzino();
+}
+
+async function loadMagazzino() {
+  try {
+    await API.loadProdotti();
+    _prodotti = API.S.prodotti;
+    renderStats();
+    renderMagazzino();
+    updateSubtitle();
+    window.refreshNavBadges?.();
+  } catch(e) {
+    toast('Errore caricamento: ' + e.message, 'err');
+  }
+}
+
+function updateSubtitle() {
+  const low = _prodotti.filter(p => p.quantita <= p.soglia_minima).length;
+  document.getElementById('mag-subtitle').textContent =
+    `${_prodotti.length} prodotti · ${low > 0 ? low + ' sotto soglia' : 'tutti ok'}`;
+}
+
+function renderStats() {
+  const total = _prodotti.length;
+  const low   = _prodotti.filter(p => p.quantita <= p.soglia_minima).length;
+  const zero  = _prodotti.filter(p => p.quantita === 0).length;
+  const cats  = new Set(_prodotti.map(p => p.categoria)).size;
+  document.getElementById('mag-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Totale Prodotti</div>
+      <div class="stat-value">${total}</div>
+    </div>
+    <div class="stat-card ${low > 0 ? 'stat-warn' : ''}">
+      <div class="stat-label">Sotto Soglia</div>
+      <div class="stat-value">${low}</div>
+    </div>
+    <div class="stat-card ${zero > 0 ? 'stat-danger' : ''}">
+      <div class="stat-label">Esauriti</div>
+      <div class="stat-value">${zero}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Categorie</div>
+      <div class="stat-value">${cats}</div>
+    </div>`;
+}
+
+function renderMagazzino() {
+  const q   = document.getElementById('search-mag').value.toLowerCase();
+  const cat = document.getElementById('fil-cat').value;
+  const stato = document.getElementById('fil-stato-mag').value;
+
+  let list = _prodotti.filter(p => {
+    if (q && !p.codice_jit?.toLowerCase().includes(q) && !p.descrizione?.toLowerCase().includes(q) && !p.fornitore?.toLowerCase().includes(q)) return false;
+    if (cat && p.categoria !== cat) return false;
+    if (stato === 'low' && p.quantita > p.soglia_minima) return false;
+    if (stato === 'ok'  && p.quantita <= p.soglia_minima) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('mag-tbody');
+  const empty = document.getElementById('mag-empty');
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const frag = document.createDocumentFragment();
+  list.forEach(p => {
+    const tr = document.createElement('tr');
+    const pct = p.soglia_minima > 0 ? Math.round((p.quantita / p.soglia_minima) * 100) : 100;
+    const cls = p.quantita === 0 ? 'qty-zero' : p.quantita <= p.soglia_minima ? 'qty-low' : 'qty-ok';
+    tr.innerHTML = `
+      <td><span class="code-badge">${p.codice_jit}</span></td>
+      <td>${p.descrizione || '—'}</td>
+      <td><span class="badge badge-cat">${p.categoria || '—'}</span></td>
+      <td class="text-right"><span class="${cls}">${fmtQty(p.quantita)} ${p.unita_misura}</span></td>
+      <td class="text-right text-muted">${fmtQty(p.soglia_minima)}</td>
+      <td class="text-right">
+        <div class="pct-wrap">
+          <div class="pct-bar"><div class="pct-fill ${cls}" style="width:${Math.min(pct,100)}%"></div></div>
+          <span class="pct-label ${cls}">${pct}%</span>
+        </div>
+      </td>
+      <td class="text-muted">${p.unita_misura}</td>
+      <td class="text-muted">${p.fornitore || '—'}</td>
+      <td class="actions-cell">
+        <button class="btn-action" title="Carico/Scarico" onclick="openMovimento('${p.codice_jit}')">±</button>
+        <button class="btn-action" title="Storico" onclick="openStorico('${p.codice_jit}')">📋</button>
+        <button class="btn-action" title="Modifica" onclick="openEditProd('${p.codice_jit}')">✎</button>
+      </td>`;
+    frag.appendChild(tr);
+  });
+  tbody.innerHTML = '';
+  tbody.appendChild(frag);
+}
+
+/* ── MOVIMENTO ── */
+function openMovimento(codice) {
+  _movCodice = codice;
+  const p = _prodotti.find(x => x.codice_jit === codice);
+  if (!p) return;
+  document.getElementById('mov-title').textContent = 'Movimento — ' + codice;
+  document.getElementById('mov-prod-info').innerHTML =
+    `<strong>${p.descrizione}</strong><br>
+     Giacenza attuale: <strong>${fmtQty(p.quantita)} ${p.unita_misura}</strong> &nbsp;·&nbsp; Soglia: ${fmtQty(p.soglia_minima)}`;
+  document.getElementById('mov-qty').value = '';
+  document.getElementById('mov-causale').value = '';
+  document.getElementById('mov-tipo').value = 'carico';
+  updateMovSign();
+  openModal('m-movimento');
+}
+
+function updateMovSign() {
+  const t = document.getElementById('mov-tipo').value;
+  document.getElementById('mov-btn').textContent =
+    t === 'carico' ? 'Registra Carico' : t === 'scarico' ? 'Registra Scarico' : 'Registra Rettifica';
+}
+
+async function salvaMovimento() {
+  const tipo    = document.getElementById('mov-tipo').value;
+  const qty     = parseInt(document.getElementById('mov-qty').value);
+  const causale = document.getElementById('mov-causale').value.trim();
+  if (!qty || qty <= 0) { toast('Inserisci una quantità valida', 'err'); return; }
+
+  const p = _prodotti.find(x => x.codice_jit === _movCodice);
+  if (!p) return;
+
+  const delta   = tipo === 'scarico' ? -qty : qty;
+  const newQty  = tipo === 'rettifica' ? qty : Math.max(0, p.quantita + delta);
+
+  const { error: e1 } = await sb.from('prodotti').update({ quantita: newQty }).eq('codice_jit', _movCodice);
+  if (e1) { toast('Errore: ' + e1.message, 'err'); return; }
+  await sb.from('movimenti').insert({
+    codice_jit: _movCodice, tipo, qty: delta,
+    causale: causale || (tipo === 'carico' ? 'Carico manuale' : tipo === 'scarico' ? 'Scarico manuale' : 'Rettifica'),
+  });
+
+  toast(`${tipo === 'carico' ? 'Carico' : tipo === 'scarico' ? 'Scarico' : 'Rettifica'} registrato ✓`, 'ok');
+  closeModal('m-movimento');
+  await loadMagazzino();
+}
+
+/* ── STORICO ── */
+async function openStorico(codice) {
+  const p = _prodotti.find(x => x.codice_jit === codice);
+  document.getElementById('storico-title').textContent = 'Storico — ' + codice;
+  document.getElementById('storico-sub').textContent = p?.descrizione || '';
+  document.getElementById('storico-body').innerHTML = '<div class="loading-state"><span class="spinner"></span> Caricamento…</div>';
+  openModal('m-storico');
+
+  const { data, error } = await sb.from('movimenti')
+    .select('*').eq('codice_jit', codice)
+    .order('created_at', { ascending: false }).limit(100);
+
+  if (error || !data?.length) {
+    document.getElementById('storico-body').innerHTML =
+      '<div class="empty-state" style="padding:2rem"><div class="empty-icon">📭</div><div class="empty-title">Nessun movimento registrato</div></div>';
+    return;
+  }
+
+  let running = p?.quantita || 0;
+  const rows = data.map(m => {
+    const sign = m.qty >= 0 ? '+' : '';
+    const cls  = m.qty >= 0 ? 'qty-ok' : m.qty < 0 ? 'qty-low' : '';
+    const row  = `<tr>
+      <td class="text-muted" style="font-size:11px;white-space:nowrap">${fmtDateTime(m.created_at)}</td>
+      <td><span class="badge badge-cat">${m.tipo}</span></td>
+      <td class="text-right font-mono"><span class="${cls}">${sign}${fmtQty(m.qty)}</span></td>
+      <td class="text-muted">${m.causale || '—'}</td>
+      <td class="text-muted" style="font-size:11px">${m.ordine_id || '—'}</td>
+    </tr>`;
+    return row;
+  });
+
+  document.getElementById('storico-body').innerHTML = `
+    <table class="data-table">
+      <thead><tr>
+        <th>Data/Ora</th><th>Tipo</th><th class="text-right">Quantità</th>
+        <th>Causale</th><th>Ordine</th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>`;
+}
+
+/* ── ADD / EDIT PRODOTTO ── */
+function openEditProd(codice) {
+  const p = _prodotti.find(x => x.codice_jit === codice);
+  if (!p) return;
+  document.getElementById('prod-modal-title').textContent = 'Modifica Prodotto';
+  document.getElementById('prod-edit-id').value  = p.id;
+  document.getElementById('prod-codice').value   = p.codice_jit;
+  document.getElementById('prod-codice').disabled = true;
+  document.getElementById('prod-cat').value      = p.categoria || '';
+  document.getElementById('prod-desc').value     = p.descrizione || '';
+  document.getElementById('prod-qty').value      = p.quantita;
+  document.getElementById('prod-soglia').value   = p.soglia_minima;
+  document.getElementById('prod-um').value       = p.unita_misura || 'pz';
+  document.getElementById('prod-forn').value     = p.fornitore || '';
+  document.getElementById('prod-note').value     = p.note || '';
+  openModal('m-add-prod');
+}
+
+function resetProdForm() {
+  document.getElementById('prod-modal-title').textContent = 'Nuovo Prodotto';
+  document.getElementById('prod-edit-id').value  = '';
+  document.getElementById('prod-codice').value   = '';
+  document.getElementById('prod-codice').disabled = false;
+  document.getElementById('prod-cat').value      = '';
+  document.getElementById('prod-desc').value     = '';
+  document.getElementById('prod-qty').value      = '0';
+  document.getElementById('prod-soglia').value   = '1000';
+  document.getElementById('prod-um').value       = 'pz';
+  document.getElementById('prod-forn').value     = '';
+  document.getElementById('prod-note').value     = '';
+}
+
+async function salvaProdotto() {
+  const editId  = document.getElementById('prod-edit-id').value;
+  const codice  = document.getElementById('prod-codice').value.trim().toUpperCase();
+  const cat     = document.getElementById('prod-cat').value;
+  const desc    = document.getElementById('prod-desc').value.trim();
+  const qty     = parseInt(document.getElementById('prod-qty').value) || 0;
+  const soglia  = parseInt(document.getElementById('prod-soglia').value) || 0;
+  const um      = document.getElementById('prod-um').value;
+  const forn    = document.getElementById('prod-forn').value.trim();
+  const note    = document.getElementById('prod-note').value.trim();
+
+  if (!codice || !cat || !desc) { toast('Compila i campi obbligatori *', 'err'); return; }
+
+  const payload = { categoria: cat, descrizione: desc, quantita: qty,
+                    soglia_minima: soglia, unita_misura: um, fornitore: forn, note };
+
+  let error;
+  if (editId) {
+    ({ error } = await sb.from('prodotti').update(payload).eq('id', editId));
+  } else {
+    ({ error } = await sb.from('prodotti').insert({ codice_jit: codice, ...payload }));
+  }
+  if (error) { toast('Errore: ' + error.message, 'err'); return; }
+
+  toast(editId ? 'Prodotto aggiornato ✓' : 'Prodotto aggiunto ✓', 'ok');
+  closeModal('m-add-prod');
+  resetProdForm();
+  await loadMagazzino();
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV() {
+  const headers = ['Codice JIT','Descrizione','Categoria','Quantità','Soglia','Unità','Fornitore','Note'];
+  const rows = _prodotti.map(p =>
+    [p.codice_jit, p.descrizione, p.categoria, p.quantita, p.soglia_minima,
+     p.unita_misura, p.fornitore || '', p.note || ''].map(v => `"${v}"`).join(',')
+  );
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `magazzino_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Export CSV scaricato ✓', 'ok');
+}
+
+document.getElementById('m-add-prod').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal('m-add-prod');
+});
+document.getElementById('m-movimento').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal('m-movimento');
+});
+document.getElementById('m-storico').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal('m-storico');
+});
+
+init();
+</script>
+</body>
+</html>

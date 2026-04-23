@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archivio — JIT Gestionale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div id="nav"></div>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 class="page-title">Archivio</h1>
+        <span class="page-subtitle" id="arch-subtitle">Ordini completati e annullati</span>
+      </div>
+      <div class="topbar-right">
+        <span id="alert-pill" class="alert-pill" style="display:none" onclick="window.location='magazzino.html'">
+          ⚠ <span id="alert-count">0</span> sotto soglia
+        </span>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <input class="filter-input" id="search-arch" type="search" placeholder="Cerca ID, cliente, N° ODA…" oninput="filterRender()">
+      <select class="filter-select" id="fil-stato-arch" onchange="filterRender()">
+        <option value="">Tutti</option>
+        <option value="completato">Completati</option>
+        <option value="annullato">Annullati</option>
+      </select>
+      <select class="filter-select" id="fil-priorita-arch" onchange="filterRender()">
+        <option value="">Tutte le priorità</option>
+        <option value="urgente">Urgente</option>
+        <option value="alta">Alta</option>
+        <option value="normale">Normale</option>
+        <option value="bassa">Bassa</option>
+      </select>
+      <input class="filter-input" id="fil-da" type="date" title="Dal" onchange="filterRender()">
+      <input class="filter-input" id="fil-a"  type="date" title="Al"  onchange="filterRender()">
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="arch-stats"></div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Cod. JIT</th>
+            <th>N° ODA Cliente</th>
+            <th>Cliente</th>
+            <th>Stato</th>
+            <th>Priorità</th>
+            <th>Prodotti</th>
+            <th>Completato</th>
+            <th>Creato</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="arch-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="arch-empty" style="display:none">
+        <div class="empty-icon">🗄️</div>
+        <div class="empty-title">Nessun ordine archiviato</div>
+        <div class="empty-sub">Gli ordini completati o annullati appariranno qui</div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="arch-pagination"></div>
+  </main>
+</div>
+
+<!-- Modal: Dettaglio archivio (read-only) -->
+<div class="modal-overlay" id="m-arch-det">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="arch-det-id"></div>
+        <div class="modal-sub" id="arch-det-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('m-arch-det')">✕</button>
+    </div>
+    <div class="modal-body" id="arch-det-body">
+      <div class="loading-state"><span class="spinner"></span> Caricamento…</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('m-arch-det')">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/nav.js"></script>
+<script>
+const PAGE_SIZE = 25;
+let _archAll  = [];
+let _archFilt = [];
+let _archPage = 1;
+
+async function init() {
+  await AUTH.require();
+  await AUTH.initNav();
+  NAV.init('archivio');
+  await loadArchivio();
+}
+
+async function loadArchivio() {
+  try {
+    const { data, error } = await sb.from('ordini')
+      .select('*, ordine_items(codice_jit, qty)')
+      .in('stato', ['completato', 'annullato'])
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    _archAll = data || [];
+    renderStats();
+    filterRender();
+    window.refreshNavBadges?.();
+  } catch(e) {
+    toast('Errore caricamento: ' + e.message, 'err');
+  }
+}
+
+function renderStats() {
+  const comp  = _archAll.filter(o => o.stato === 'completato').length;
+  const annul = _archAll.filter(o => o.stato === 'annullato').length;
+  const urg   = _archAll.filter(o => o.priorita === 'urgente').length;
+  document.getElementById('arch-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Totale Archiviati</div>
+      <div class="stat-value">${_archAll.length}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Completati</div>
+      <div class="stat-value" style="color:var(--green)">${comp}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Annullati</div>
+      <div class="stat-value" style="color:var(--red)">${annul}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Di cui Urgenti</div>
+      <div class="stat-value" style="color:var(--orange)">${urg}</div>
+    </div>`;
+}
+
+function filterRender() {
+  const q      = document.getElementById('search-arch').value.toLowerCase();
+  const stato  = document.getElementById('fil-stato-arch').value;
+  const prior  = document.getElementById('fil-priorita-arch').value;
+  const da     = document.getElementById('fil-da').value;
+  const a      = document.getElementById('fil-a').value;
+
+  _archFilt = _archAll.filter(o => {
+    if (q && !o.id?.toLowerCase().includes(q)
+           && !o.cliente?.toLowerCase().includes(q)
+           && !o.numero_oda?.toLowerCase().includes(q)) return false;
+    if (stato && o.stato !== stato) return false;
+    if (prior && o.priorita !== prior) return false;
+    if (da && o.created_at < da) return false;
+    if (a  && o.created_at > a + 'T23:59:59') return false;
+    return true;
+  });
+
+  _archPage = 1;
+  renderPage();
+}
+
+function renderPage() {
+  const start = (_archPage - 1) * PAGE_SIZE;
+  const slice = _archFilt.slice(start, start + PAGE_SIZE);
+  const tbody = document.getElementById('arch-tbody');
+  const empty = document.getElementById('arch-empty');
+
+  if (!_archFilt.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'flex';
+    document.getElementById('arch-pagination').innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const frag = document.createDocumentFragment();
+  slice.forEach(o => {
+    const items = o.ordine_items || [];
+    const totPz = items.reduce((s, i) => s + (i.qty || 0), 0);
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => openDet(o.id);
+    tr.innerHTML = `
+      <td><span class="code-badge">${o.id}</span></td>
+      <td class="font-mono" style="font-size:12px">${o.numero_oda || '—'}</td>
+      <td>${o.cliente || '—'}</td>
+      <td>${statoBadge(o.stato)}</td>
+      <td>${prioritaBadge(o.priorita)}</td>
+      <td class="text-muted" style="font-size:12px">${items.length} tipo · ${fmtQty(totPz)} pz</td>
+      <td class="text-muted" style="font-size:12px">${o.completed_at ? fmtDate(o.completed_at) : '—'}</td>
+      <td class="text-muted" style="font-size:12px">${fmtDate(o.created_at)}</td>
+      <td><button class="btn-action" onclick="event.stopPropagation();openDet('${o.id}')">→</button></td>`;
+    frag.appendChild(tr);
+  });
+  tbody.innerHTML = '';
+  tbody.appendChild(frag);
+
+  // Pagination
+  const pages = Math.ceil(_archFilt.length / PAGE_SIZE);
+  if (pages <= 1) { document.getElementById('arch-pagination').innerHTML = ''; return; }
+  let phtml = `<span class="pag-info">Pag. ${_archPage}/${pages} · ${_archFilt.length} ordini</span>`;
+  if (_archPage > 1) phtml += `<button class="btn btn-ghost btn-sm" onclick="goPag(${_archPage-1})">← Prec</button>`;
+  if (_archPage < pages) phtml += `<button class="btn btn-ghost btn-sm" onclick="goPag(${_archPage+1})">Succ →</button>`;
+  document.getElementById('arch-pagination').innerHTML = phtml;
+}
+
+function goPag(p) { _archPage = p; renderPage(); window.scrollTo(0,0); }
+
+/* ── DETTAGLIO (read-only) ── */
+async function openDet(id) {
+  const o = _archAll.find(x => x.id === id); if (!o) return;
+  document.getElementById('arch-det-id').textContent = id;
+  document.getElementById('arch-det-sub').textContent =
+    `${o.cliente} · ${statoBadgeText(o.stato)} · ${fmtDate(o.created_at)}`;
+  document.getElementById('arch-det-body').innerHTML =
+    '<div class="loading-state"><span class="spinner"></span> Caricamento…</div>';
+  openModal('m-arch-det');
+
+  // Load items + spedizioni + movimenti
+  const [{ data: items }, { data: speds }, { data: movs }] = await Promise.all([
+    sb.from('ordine_items').select('*').eq('ordine_id', id),
+    sb.from('spedizioni').select('*').eq('ordine_id', id).order('created_at'),
+    sb.from('movimenti').select('*').eq('ordine_id', id).order('created_at'),
+  ]);
+
+  const totPz  = (items||[]).reduce((s,i) => s + i.qty, 0);
+  const spedPz = (speds||[]).reduce((s,s2) => s + s2.qty, 0);
+
+  document.getElementById('arch-det-body').innerHTML = `
+    <div class="det-grid">
+      <div class="det-left">
+        <!-- Info card -->
+        <div class="det-section">
+          <div class="det-section-title">Informazioni Ordine</div>
+          <div class="det-info-grid">
+            <div class="det-info-row"><span class="det-label">Cod. JIT</span><span class="code-badge">${o.id}</span></div>
+            <div class="det-info-row"><span class="det-label">N° ODA Cliente</span><span class="font-mono">${o.numero_oda || '—'}</span></div>
+            <div class="det-info-row"><span class="det-label">Cliente</span><span>${o.cliente}</span></div>
+            <div class="det-info-row"><span class="det-label">Stato</span>${statoBadge(o.stato)}</div>
+            <div class="det-info-row"><span class="det-label">Priorità</span>${prioritaBadge(o.priorita)}</div>
+            <div class="det-info-row"><span class="det-label">Creato</span><span class="text-muted">${fmtDateTime(o.created_at)}</span></div>
+            ${o.completed_at ? `<div class="det-info-row"><span class="det-label">Completato</span><span class="text-muted">${fmtDateTime(o.completed_at)}</span></div>` : ''}
+            ${o.data_consegna ? `<div class="det-info-row"><span class="det-label">Consegna richiesta</span><span class="text-muted">${fmtDate(o.data_consegna)}</span></div>` : ''}
+            ${o.note ? `<div class="det-info-row"><span class="det-label">Note</span><span class="text-muted">${o.note}</span></div>` : ''}
+          </div>
+        </div>
+
+        <!-- Items -->
+        <div class="det-section">
+          <div class="det-section-title">Prodotti Ordinati (${totPz.toLocaleString('it-IT')} pz totali)</div>
+          <div class="items-list">
+            ${(items||[]).map(it => `
+              <div class="item-row">
+                <span class="code-badge">${it.codice_jit}</span>
+                <span class="item-desc">${it.descrizione || ''}</span>
+                <span class="item-qty">${fmtQty(it.qty)} pz</span>
+              </div>`).join('') || '<div class="text-muted" style="font-size:13px;padding:8px 0">Nessun prodotto</div>'}
+          </div>
+        </div>
+      </div>
+
+      <div class="det-right">
+        <!-- Spedizioni -->
+        <div class="det-section">
+          <div class="det-section-title">Spedizioni (${fmtQty(spedPz)} / ${fmtQty(totPz)} pz)</div>
+          ${(speds||[]).length ? (speds||[]).map((s,i) => `
+            <div class="sped-item">
+              <div class="sped-header">
+                <span style="font-size:12px;font-weight:600;color:var(--accent2)">Spedizione #${i+1}</span>
+                <span style="font-size:11px;color:var(--text3)">${fmtDateTime(s.created_at)}</span>
+              </div>
+              <div style="font-size:13px">${fmtQty(s.qty)} pz${s.note ? ` — <span class="text-muted">${s.note}</span>` : ''}</div>
+            </div>`).join('')
+          : '<div class="text-muted" style="font-size:13px;padding:8px 0">Nessuna spedizione registrata</div>'}
+        </div>
+
+        <!-- Timeline movimenti -->
+        ${(movs||[]).length ? `
+        <div class="det-section">
+          <div class="det-section-title">Timeline Movimenti Stock</div>
+          <div class="timeline">
+            ${(movs||[]).map(m => `
+              <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-content">
+                  <div class="tl-title">${m.causale || m.tipo}</div>
+                  <div class="tl-meta">${fmtDateTime(m.created_at)} · <span class="${m.qty >= 0 ? 'qty-ok' : 'qty-low'}">${m.qty >= 0 ? '+' : ''}${fmtQty(m.qty)} pz</span></div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
+      </div>
+    </div>`;
+}
+
+function statoBadgeText(stato) {
+  const map = { completato: 'Completato', annullato: 'Annullato' };
+  return map[stato] || stato;
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV() {
+  const headers = ['ID Ordine','N° ODA','Cliente','Stato','Priorità','Fase','Creato','Completato','Consegna','Note'];
+  const rows = _archFilt.map(o =>
+    [o.id, o.numero_oda||'', o.cliente, o.stato, o.priorita||'', o.fase||'',
+     fmtDate(o.created_at), o.completed_at ? fmtDate(o.completed_at) : '',
+     o.data_consegna ? fmtDate(o.data_consegna) : '', o.note||'']
+      .map(v => `"${v}"`).join(',')
+  );
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `archivio_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Export CSV scaricato ✓', 'ok');
+}
+
+document.getElementById('m-arch-det').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal('m-arch-det');
+});
+
+init();
+</script>
+</body>
+</html>

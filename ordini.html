@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JIT Pro — Ordini</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/nav.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="nav"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title">Ordini</span>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="loadPage(true)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openCreate()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuovo Ordine
+        </button>
+      </div>
+    </div>
+
+    <div class="main" style="overflow:hidden;display:flex;flex-direction:column;">
+      <!-- Filtri -->
+      <div class="table-top" style="background:var(--bg3);border-bottom:1px solid var(--border2);">
+        <div class="search-wrap">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" id="q-search" type="text" placeholder="Cerca per cliente, ID, N° ODA…">
+        </div>
+        <select class="filter-sel" id="q-stato" onchange="renderOrdini()">
+          <option value="">Tutti gli stati</option>
+          <option value="aperto">Aperto</option>
+          <option value="in_lavorazione">In lavorazione</option>
+          <option value="completato">Completato</option>
+          <option value="annullato">Annullato</option>
+        </select>
+        <select class="filter-sel" id="q-fase" onchange="renderOrdini()">
+          <option value="">Tutte le fasi</option>
+          <option>Ricevimento</option>
+          <option>Embedding</option>
+          <option>Personalizzazione</option>
+          <option>Controllo QC</option>
+          <option>Spedizione</option>
+        </select>
+        <select class="filter-sel" id="q-prio" onchange="renderOrdini()">
+          <option value="">Tutte priorità</option>
+          <option value="urgente">Urgente</option>
+          <option value="alta">Alta</option>
+          <option value="normale">Normale</option>
+          <option value="bassa">Bassa</option>
+        </select>
+        <span class="table-count" id="count-label">—</span>
+      </div>
+
+      <!-- Tabella -->
+      <div style="flex:1;overflow-y:auto;">
+        <table class="tbl" id="ord-table">
+          <thead>
+            <tr>
+              <th>Cod. JIT</th>
+              <th>N° ODA Cliente</th>
+              <th>Cliente</th>
+              <th>Stato</th>
+              <th>Fase</th>
+              <th>Priorità</th>
+              <th>Consegna</th>
+              <th>Creato</th>
+              <th style="text-align:right">Azioni</th>
+            </tr>
+          </thead>
+          <tbody id="ord-tbody">
+            <tr><td colspan="9"><div class="loading"><div class="spin"></div> Caricamento…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginazione -->
+      <div class="pager" id="pager"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: Crea / Modifica Ordine ═══════ -->
+<div class="overlay" id="m-form">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <span class="modal-title" id="m-form-title">Nuovo Ordine</span>
+      <button class="btn-close" onclick="closeModal('m-form')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="f-id">
+
+      <div class="form-grid">
+        <!-- Colonna sinistra -->
+        <div class="form-group">
+          <label class="form-lbl">Cliente *</label>
+          <input class="form-inp" id="f-cliente" type="text" placeholder="Nome cliente o azienda">
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">N° ODA Cliente</label>
+          <input class="form-inp" id="f-oda" type="text" placeholder="es. PO-2024-0123">
+          <span class="form-hint">Numero ordine d'acquisto del cliente</span>
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">Data Consegna</label>
+          <input class="form-inp" id="f-consegna" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">Priorità</label>
+          <select class="form-sel" id="f-prio">
+            <option value="bassa">Bassa</option>
+            <option value="normale" selected>Normale</option>
+            <option value="alta">Alta</option>
+            <option value="urgente">Urgente ⚡</option>
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label class="form-lbl">Note interne</label>
+          <textarea class="form-txt" id="f-note" placeholder="Note aggiuntive sull'ordine…"></textarea>
+        </div>
+      </div>
+
+      <!-- Prodotti dell'ordine -->
+      <div class="form-section">
+        <div class="form-section-title">Prodotti — Articoli da produrre</div>
+        <div class="items-container" id="f-items"></div>
+        <button class="btn-add-row" onclick="addItemRow()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Aggiungi prodotto
+        </button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-form')">Annulla</button>
+      <button class="btn btn-primary" id="f-save-btn" onclick="saveOrdine()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Salva Ordine
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: Dettaglio Ordine ═══════ -->
+<div class="overlay" id="m-det">
+  <div class="modal modal-xl">
+    <div class="modal-head">
+      <span class="modal-title" id="det-title">Dettaglio Ordine</span>
+      <span class="modal-id" id="det-id"></span>
+      <button class="btn-close" onclick="closeModal('m-det')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <!-- Colonna layout -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <!-- Col sinistra: info + pipeline + items -->
+        <div>
+          <div class="det-section">
+            <div class="det-section-title">Informazioni Ordine</div>
+            <div class="det-grid" id="det-info"></div>
+          </div>
+
+          <div class="det-section">
+            <div class="det-section-title">Fase Produzione</div>
+            <div class="pipeline" id="det-pipeline"></div>
+          </div>
+
+          <div class="det-section">
+            <div class="det-section-title">Prodotti</div>
+            <div id="det-items"></div>
+          </div>
+        </div>
+
+        <!-- Col destra: spedizioni + timeline -->
+        <div>
+          <div class="det-section">
+            <div class="det-section-title">Spedizioni Parziali</div>
+            <div id="det-spedizioni"></div>
+          </div>
+
+          <div class="det-section">
+            <div class="det-section-title">Timeline</div>
+            <div class="timeline" id="det-timeline"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" id="det-foot"></div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: Spedizione Parziale ═══════ -->
+<div class="overlay" id="m-parz">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <span class="modal-title">Spedizione Parziale</span>
+      <button class="btn-close" onclick="closeModal('m-parz')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="parz-info" style="background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2)"></div>
+      <div class="form-group mb-12">
+        <label class="form-lbl">Quantità spedita *</label>
+        <input class="form-inp" id="parz-qty" type="number" min="1" placeholder="es. 500">
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Note spedizione</label>
+        <input class="form-inp" id="parz-note" type="text" placeholder="DDT n°, corriere…">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-parz')">Annulla</button>
+      <button class="btn btn-warning" onclick="salvaSpedizioneParziale()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+        Registra Spedizione
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: Completa Ordine ═══════ -->
+<div class="overlay" id="m-completa">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <span class="modal-title">Completa Ordine</span>
+      <button class="btn-close" onclick="closeModal('m-completa')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="completa-info" style="background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2)"></div>
+      <div class="det-section-title" style="margin-bottom:10px">Scarti (opzionale)</div>
+      <div id="completa-scarti"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-completa')">Annulla</button>
+      <button class="btn btn-success" onclick="confermaCompleta()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Completa Ordine
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-root"></div>
+
+<script>
+const FASI = ['Ricevimento','Embedding','Personalizzazione','Controllo QC','Spedizione'];
+const PAGE_SIZE = 25;
+let page = 0;
+let filtered = [];
+let _detId = null;
+let _parzId = null;
+let _completaId = null;
+
+/* ── INIT ─────────────────────────────────────── */
+(async () => {
+  const user = await AUTH.require();
+  if (!user) return;
+  initNav('ordini');
+  AUTH.initNav();
+
+  document.getElementById('q-search').addEventListener('input',
+    debounce(() => { page = 0; renderOrdini(); }, 250)
+  );
+
+  try {
+    await Promise.all([API.loadProdotti(), API.loadOrdini()]);
+    renderOrdini();
+    refreshNavBadges?.();
+  } catch(e) { toast('Errore caricamento: ' + e.message, 'err'); }
+})();
+
+async function loadPage(force = false) {
+  try {
+    await API.loadOrdini(null, force);
+    renderOrdini();
+    refreshNavBadges?.();
+    if (force) toast('Aggiornato', 'ok');
+  } catch(e) { toast('Errore: ' + e.message, 'err'); }
+}
+
+/* ── RENDER LISTA ─────────────────────────────── */
+function renderOrdini() {
+  const q     = document.getElementById('q-search').value.toLowerCase().trim();
+  const stato = document.getElementById('q-stato').value;
+  const fase  = document.getElementById('q-fase').value;
+  const prio  = document.getElementById('q-prio').value;
+
+  filtered = S.ordini.filter(o => {
+    if (stato && o.stato !== stato) return false;
+    if (fase  && o.fase  !== fase)  return false;
+    if (prio  && o.priorita !== prio) return false;
+    if (q) {
+      const hay = [o.id, o.numero_oda, o.cliente, o.note].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const total = filtered.length;
+  const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
+  if (page > maxPage) page = maxPage;
+  const slice = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  document.getElementById('count-label').textContent = total + ' ordini';
+
+  const tbody = document.getElementById('ord-tbody');
+  if (slice.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+      <h3>Nessun ordine trovato</h3><p>Cambia i filtri o crea un nuovo ordine</p>
+    </div></td></tr>`;
+  } else {
+    // Usa fragment per batch DOM update
+    const frag = document.createDocumentFragment();
+    slice.forEach(o => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mono">${o.id}</td>
+        <td class="mono">${o.numero_oda ? `<span style="color:var(--yellow)">${o.numero_oda}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
+        <td class="main">${o.cliente}</td>
+        <td>${statoBadge(o.stato)}</td>
+        <td><span style="font-size:11.5px;color:var(--text2)">${o.fase}</span></td>
+        <td>${prioritaBadge(o.priorita)}</td>
+        <td class="light">${fmtDate(o.data_consegna)}</td>
+        <td class="light">${fmtDate(o.created_at)}</td>
+        <td style="text-align:right">
+          <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openEdit('${o.id}')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </td>`;
+      tr.onclick = () => openDet(o.id);
+      frag.appendChild(tr);
+    });
+    tbody.innerHTML = '';
+    tbody.appendChild(frag);
+  }
+
+  // Paginazione
+  renderPager(total);
+}
+
+function renderPager(total) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const el = document.getElementById('pager');
+  if (pages <= 1) { el.innerHTML = `<span>${total} ordini</span>`; return; }
+
+  let btns = '';
+  for (let i = 0; i < pages; i++) {
+    btns += `<button class="pg-btn ${i===page?'active':''}" onclick="goPage(${i})">${i+1}</button>`;
+  }
+  el.innerHTML = `
+    <span>${(page*PAGE_SIZE)+1}–${Math.min((page+1)*PAGE_SIZE, total)} di ${total}</span>
+    <div class="pager-btns">
+      <button class="pg-btn" onclick="goPage(${page-1})" ${page===0?'disabled':''}>‹</button>
+      ${btns}
+      <button class="pg-btn" onclick="goPage(${page+1})" ${page>=pages-1?'disabled':''}>›</button>
+    </div>`;
+}
+
+function goPage(n) { page = n; renderOrdini(); }
+
+/* ── CREATE / EDIT ────────────────────────────── */
+function openCreate() {
+  document.getElementById('f-id').value       = '';
+  document.getElementById('f-cliente').value  = '';
+  document.getElementById('f-oda').value      = '';
+  document.getElementById('f-consegna').value = '';
+  document.getElementById('f-prio').value     = 'normale';
+  document.getElementById('f-note').value     = '';
+  document.getElementById('f-items').innerHTML = '';
+  document.getElementById('m-form-title').textContent = 'Nuovo Ordine';
+  addItemRow();
+  openModal('m-form');
+  setTimeout(() => document.getElementById('f-cliente').focus(), 80);
+}
+
+async function openEdit(id) {
+  const o = S.ordini.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('f-id').value       = o.id;
+  document.getElementById('f-cliente').value  = o.cliente;
+  document.getElementById('f-oda').value      = o.numero_oda || '';
+  document.getElementById('f-consegna').value = o.data_consegna || '';
+  document.getElementById('f-prio').value     = o.priorita;
+  document.getElementById('f-note').value     = o.note || '';
+  document.getElementById('m-form-title').textContent = `Modifica — ${o.id}`;
+
+  const items = await API.loadOrdineItems(id);
+  const cont  = document.getElementById('f-items');
+  cont.innerHTML = '';
+  items.forEach(it => addItemRow(it.codice_jit, it.qty));
+  if (items.length === 0) addItemRow();
+
+  openModal('m-form');
+}
+
+function addItemRow(codice = '', qty = '') {
+  const cont = document.getElementById('f-items');
+  const row  = document.createElement('div');
+  row.className = 'item-row';
+
+  // Datalist con prodotti
+  const dlId = 'dl-prod-' + Date.now() + Math.random().toString(36).slice(2);
+  row.innerHTML = `
+    <div style="position:relative">
+      <input class="form-inp" list="${dlId}" placeholder="Codice JIT…" value="${codice}">
+      <datalist id="${dlId}">${S.prodotti.map(p =>
+        `<option value="${p.codice_jit}" label="${p.descrizione} (${fmtQty(p.quantita)} pz)">`
+      ).join('')}</datalist>
+    </div>
+    <input class="form-inp" type="number" min="1" placeholder="Qtà" value="${qty}" style="text-align:right">
+    <button class="btn-del-row" onclick="this.closest('.item-row').remove()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>`;
+  cont.appendChild(row);
+}
+
+async function saveOrdine() {
+  const id      = document.getElementById('f-id').value;
+  const cliente = document.getElementById('f-cliente').value.trim();
+  const oda     = document.getElementById('f-oda').value.trim();
+  const cons    = document.getElementById('f-consegna').value;
+  const prio    = document.getElementById('f-prio').value;
+  const note    = document.getElementById('f-note').value.trim();
+
+  if (!cliente) { toast('Inserisci il cliente', 'err'); return; }
+
+  // Leggi items
+  const rows  = [...document.querySelectorAll('#f-items .item-row')];
+  const items = rows
+    .map(r => {
+      const inps = r.querySelectorAll('input');
+      return { codice_jit: inps[0].value.trim(), qty: parseInt(inps[1].value) };
+    })
+    .filter(it => it.codice_jit && it.qty > 0);
+
+  const btn = document.getElementById('f-save-btn');
+  btn.disabled = true; btn.textContent = 'Salvataggio…';
+
+  try {
+    const ordData = {
+      cliente,
+      numero_oda:    oda || null,
+      data_consegna: cons || null,
+      priorita:      prio,
+      note:          note || null,
+    };
+
+    if (id) {
+      // Modifica
+      await API.updateOrdine(id, ordData);
+      // Aggiorna items: delete + re-insert
+      await sb.from('ordine_items').delete().eq('ordine_id', id);
+      if (items.length) {
+        await sb.from('ordine_items').insert(
+          items.map(it => ({
+            ordine_id: id,
+            codice_jit: it.codice_jit,
+            descrizione: API.getProdotto(it.codice_jit)?.descrizione || null,
+            qty: it.qty,
+          }))
+        );
+      }
+      delete S.items[id];
+      toast(`Ordine ${id} aggiornato`, 'ok');
+    } else {
+      // Nuovo
+      items.forEach(it => {
+        const p = API.getProdotto(it.codice_jit);
+        it.descrizione = p?.descrizione || null;
+      });
+      const newId = await API.createOrdine(ordData, items);
+      toast(`Ordine ${newId} creato`, 'ok');
+    }
+
+    await API.loadOrdini(null, true);
+    renderOrdini();
+    refreshNavBadges?.();
+    closeModal('m-form');
+  } catch(e) {
+    toast('Errore: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salva Ordine';
+  }
+}
+
+/* ── DETTAGLIO ────────────────────────────────── */
+async function openDet(id) {
+  _detId = id;
+  const o = S.ordini.find(x => x.id === id);
+  if (!o) return;
+
+  document.getElementById('det-title').textContent = o.cliente;
+  document.getElementById('det-id').textContent    = o.id;
+
+  // Info
+  document.getElementById('det-info').innerHTML = `
+    <span class="det-lbl">Cod. JIT</span>   <span class="det-val mono">${o.id}</span>
+    <span class="det-lbl">N° ODA Cliente</span> <span class="det-val mono" style="color:var(--yellow)">${o.numero_oda || '—'}</span>
+    <span class="det-lbl">Cliente</span>    <span class="det-val">${o.cliente}</span>
+    <span class="det-lbl">Stato</span>      <span class="det-val">${statoBadge(o.stato)}</span>
+    <span class="det-lbl">Priorità</span>   <span class="det-val">${prioritaBadge(o.priorita)}</span>
+    <span class="det-lbl">Consegna</span>   <span class="det-val">${fmtDate(o.data_consegna)}</span>
+    <span class="det-lbl">Creato</span>     <span class="det-val">${fmtDateTime(o.created_at)}</span>
+    ${o.completed_at ? `<span class="det-lbl">Completato</span><span class="det-val" style="color:var(--green)">${fmtDateTime(o.completed_at)}</span>` : ''}
+    ${o.note ? `<span class="det-lbl">Note</span><span class="det-val">${o.note}</span>` : ''}
+  `;
+
+  // Pipeline
+  const faseIdx = FASI.indexOf(o.fase);
+  document.getElementById('det-pipeline').innerHTML = FASI.map((f, i) => {
+    const cls = i < faseIdx ? 'done' : (i === faseIdx ? 'active' : '');
+    const canClick = o.stato !== 'completato' && o.stato !== 'annullato';
+    return `<div class="pipe-step ${cls}" ${canClick ? `onclick="setFaseUI('${id}','${f}')"` : ''}>${f}</div>`;
+  }).join('');
+
+  openModal('m-det');
+
+  // Carica items, spedizioni, timeline in parallelo
+  const [items, spedizioni, movimenti] = await Promise.all([
+    API.loadOrdineItems(id),
+    API.loadSpedizioni(id),
+    API.loadMovimentiOrdine(id),
+  ]);
+
+  // Items
+  const totQty  = items.reduce((s, it) => s + it.qty, 0);
+  document.getElementById('det-items').innerHTML = items.length === 0
+    ? `<div style="color:var(--text3);font-size:12px;">Nessun prodotto</div>`
+    : `<table class="tbl"><thead><tr><th>Codice</th><th>Descrizione</th><th>Qtà</th><th>Stock att.</th></tr></thead><tbody>
+        ${items.map(it => {
+          const p = API.getProdotto(it.codice_jit);
+          return `<tr>
+            <td class="mono">${it.codice_jit}</td>
+            <td class="main">${it.descrizione || p?.descrizione || '—'}</td>
+            <td class="mono">${fmtQty(it.qty)}</td>
+            <td class="${p ? qtyClass(p.quantita, p.scorta_min) : ''}">${p ? fmtQty(p.quantita) : '—'}</td>
+          </tr>`;
+        }).join('')}
+        <tr style="border-top:1px solid var(--border3)">
+          <td colspan="2" style="color:var(--text3);font-size:11px;">Totale</td>
+          <td class="mono" style="color:var(--text);font-weight:700">${fmtQty(totQty)}</td>
+          <td></td>
+        </tr>
+      </tbody></table>`;
+
+  // Spedizioni
+  const totSped = spedizioni.reduce((s, sp) => s + sp.qty, 0);
+  document.getElementById('det-spedizioni').innerHTML = spedizioni.length === 0
+    ? `<div style="color:var(--text3);font-size:12px;">Nessuna spedizione ancora</div>`
+    : `${spedizioni.map((sp, i) => `
+        <div style="background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r);padding:8px 10px;margin-bottom:5px;">
+          <div class="flex items-c gap-8">
+            <span style="font-size:11px;color:var(--text3)">Sped. #${i+1}</span>
+            <span class="mono" style="color:var(--green)">${fmtQty(sp.qty)} pz</span>
+            <span style="font-size:11px;color:var(--text3);margin-left:auto">${fmtDateTime(sp.created_at)}</span>
+          </div>
+          ${sp.note ? `<div style="font-size:11.5px;color:var(--text2);margin-top:3px">${sp.note}</div>` : ''}
+        </div>`).join('')}
+       <div style="font-size:11px;color:var(--text3);margin-top:6px;">Totale spedito: <span class="mono" style="color:var(--green)">${fmtQty(totSped)}</span> / ${fmtQty(totQty)} pz</div>`;
+
+  // Timeline
+  const tlItems = movimenti
+    .filter(m => m.tipo !== 'nota' || m.causale)
+    .map(m => {
+      const icons = { fase:'🔄', ordine:'📦', parziale:'🚚', scarto:'⚠️', carico:'📥', scarico:'📤', nota:'📝', rettifica:'✏️' };
+      const colors = { fase:'accent', ordine:'green', parziale:'orange', scarto:'red', carico:'green', scarico:'orange' };
+      return `
+        <div class="tl-item">
+          <div class="tl-dot ${colors[m.tipo]||''}">${icons[m.tipo]||'○'}</div>
+          <div class="tl-content">
+            <div class="tl-title">${m.causale || m.tipo}</div>
+            <div class="tl-meta">${fmtDateTime(m.created_at)}${m.qty !== 0 ? ` · ${m.qty > 0 ? '+' : ''}${m.qty} pz` : ''}</div>
+          </div>
+        </div>`;
+    });
+  document.getElementById('det-timeline').innerHTML = tlItems.length > 0 ? tlItems.join('') :
+    `<div style="color:var(--text3);font-size:12px;">Nessuna attività registrata</div>`;
+
+  // Footer buttons
+  const isActive = o.stato !== 'completato' && o.stato !== 'annullato';
+  document.getElementById('det-foot').innerHTML = `
+    ${isActive ? `
+      <button class="btn btn-ghost btn-sm" onclick="openParz('${id}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+        Spedizione Parziale
+      </button>
+      <button class="btn btn-success btn-sm" onclick="openCompleta('${id}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Completa Ordine
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEdit('${id}');closeModal('m-det')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Modifica
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="doAnnulla('${id}')">Annulla Ord.</button>
+    ` : ''}
+    <button class="btn btn-ghost btn-sm" onclick="closeModal('m-det')">Chiudi</button>
+  `;
+}
+
+async function setFaseUI(id, fase) {
+  try {
+    await API.setFase(id, fase);
+    toast(`Fase → ${fase}`, 'ok');
+    await openDet(id);
+    renderOrdini();
+  } catch(e) { toast('Errore: ' + e.message, 'err'); }
+}
+
+async function doAnnulla(id) {
+  if (!confirm(`Annullare l'ordine ${id}?`)) return;
+  try {
+    await API.annullaOrdine(id);
+    toast(`Ordine ${id} annullato`);
+    renderOrdini();
+    refreshNavBadges?.();
+    closeModal('m-det');
+  } catch(e) { toast('Errore: ' + e.message, 'err'); }
+}
+
+/* ── SPEDIZIONE PARZIALE ──────────────────────── */
+async function openParz(id) {
+  _parzId = id;
+  const o     = S.ordini.find(x => x.id === id); if (!o) return;
+  const items = await API.loadOrdineItems(id);
+  const sped  = await API.loadSpedizioni(id);
+  const tot   = items.reduce((s, it) => s + it.qty, 0);
+  const spedTot = sped.reduce((s, sp) => s + sp.qty, 0);
+  const residuo = tot - spedTot;
+
+  document.getElementById('parz-info').innerHTML = `
+    <strong>${o.id}</strong> — ${o.cliente}<br>
+    Totale: <strong>${fmtQty(tot)} pz</strong> · 
+    Già spedito: <strong style="color:var(--green)">${fmtQty(spedTot)} pz</strong> · 
+    Residuo: <strong style="color:var(--accent2)">${fmtQty(residuo)} pz</strong>`;
+  document.getElementById('parz-qty').value  = '';
+  document.getElementById('parz-note').value = '';
+  openModal('m-parz');
+  setTimeout(() => document.getElementById('parz-qty').focus(), 80);
+}
+
+async function salvaSpedizioneParziale() {
+  const qty  = parseInt(document.getElementById('parz-qty').value);
+  const note = document.getElementById('parz-note').value.trim();
+  if (!qty || qty <= 0) { toast('Inserisci una quantità valida', 'err'); return; }
+
+  try {
+    await API.spedizioneParziale(_parzId, qty, note);
+    toast(`Spedizione di ${fmtQty(qty)} pz registrata`, 'ok');
+    closeModal('m-parz');
+    await openDet(_parzId);
+    renderOrdini();
+  } catch(e) { toast('Errore: ' + e.message, 'err'); }
+}
+
+/* ── COMPLETA ORDINE ──────────────────────────── */
+async function openCompleta(id) {
+  _completaId = id;
+  const o     = S.ordini.find(x => x.id === id); if (!o) return;
+  const items = await API.loadOrdineItems(id);
+  const sped  = await API.loadSpedizioni(id);
+  const tot   = items.reduce((s, it) => s + it.qty, 0);
+  const spedTot = sped.reduce((s, sp) => s + sp.qty, 0);
+  const residuo = tot - spedTot;
+
+  document.getElementById('completa-info').innerHTML = `
+    <strong>${o.id}</strong> — ${o.cliente}<br>
+    Residuo da spedire: <strong style="color:var(--accent2)">${fmtQty(residuo)} pz</strong>`;
+
+  // Scarti
+  document.getElementById('completa-scarti').innerHTML = items.map(it => `
+    <div class="flex items-c gap-8" style="margin-bottom:6px">
+      <span class="mono" style="font-size:11px;width:130px;flex-shrink:0">${it.codice_jit}</span>
+      <span style="font-size:11.5px;color:var(--text2);flex:1">${it.descrizione || ''}</span>
+      <input class="form-inp" type="number" min="0" placeholder="Scarti" data-codice="${it.codice_jit}"
+             style="width:90px;text-align:right">
+    </div>`).join('');
+
+  openModal('m-completa');
+}
+
+async function confermaCompleta() {
+  const scartiInputs = [...document.querySelectorAll('#completa-scarti input[data-codice]')];
+  const scarti = scartiInputs
+    .map(inp => ({ codice_jit: inp.dataset.codice, qty: parseInt(inp.value) || 0 }))
+    .filter(s => s.qty > 0);
+
+  try {
+    await API.completaOrdine(_completaId, scarti);
+    toast(`Ordine ${_completaId} completato! ✓`, 'ok');
+    await API.loadOrdini(null, true);
+    renderOrdini();
+    refreshNavBadges?.();
+    closeModal('m-completa');
+    closeModal('m-det');
+  } catch(e) { toast('Errore: ' + e.message, 'err'); }
+}
+</script>
+</body>
+</html>

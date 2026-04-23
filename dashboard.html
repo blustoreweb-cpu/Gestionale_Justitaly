@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JIT Pro — Dashboard</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/nav.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="nav"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title">Dashboard</span>
+      <span class="topbar-sep">·</span>
+      <span class="topbar-sub" id="topbar-date"></span>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="loadAll(true)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Aggiorna
+        </button>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+      <div class="loading"><div class="spin"></div> Caricamento…</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-root"></div>
+
+<script>
+const FASI = ['Ricevimento','Embedding','Personalizzazione','Controllo QC','Spedizione'];
+
+async function loadAll(force = false) {
+  try {
+    await Promise.all([
+      API.loadProdotti(force),
+      API.loadOrdini(null, force),
+    ]);
+    render();
+    refreshNavBadges?.();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="alert alert-err">Errore caricamento dati: ${e.message}</div>`;
+  }
+}
+
+function render() {
+  const ordiniAttivi = S.ordini.filter(o => ['aperto','in_lavorazione'].includes(o.stato));
+  const completatiOggi = S.ordini.filter(o => {
+    if (o.stato !== 'completato' || !o.completed_at) return false;
+    const d = new Date(o.completed_at);
+    const now = new Date();
+    return d.toDateString() === now.toDateString();
+  });
+  const sottoScorta = S.prodotti.filter(p => p.quantita <= p.scorta_min);
+  const urgenti = ordiniAttivi.filter(o => o.priorita === 'urgente' || o.priorita === 'alta');
+
+  // Contatori per fase
+  const faseCounts = {};
+  FASI.forEach(f => faseCounts[f] = 0);
+  ordiniAttivi.forEach(o => { if (faseCounts[o.fase] !== undefined) faseCounts[o.fase]++; });
+
+  document.getElementById('content').innerHTML = `
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Ordini Aperti</div>
+        <div class="stat-val accent">${S.ordini.filter(o=>o.stato==='aperto').length}</div>
+        <div class="stat-sub">da avviare</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">In Lavorazione</div>
+        <div class="stat-val orange">${S.ordini.filter(o=>o.stato==='in_lavorazione').length}</div>
+        <div class="stat-sub">attivi</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Completati Oggi</div>
+        <div class="stat-val green">${completatiOggi.length}</div>
+        <div class="stat-sub">oggi</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Scorte Basse</div>
+        <div class="stat-val ${sottoScorta.length > 0 ? 'red' : 'green'}">${sottoScorta.length}</div>
+        <div class="stat-sub">prodotti</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Urgenti/Alta</div>
+        <div class="stat-val ${urgenti.length > 0 ? 'red' : 'green'}">${urgenti.length}</div>
+        <div class="stat-sub">priorità alta</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Prodotti</div>
+        <div class="stat-val">${S.prodotti.length}</div>
+        <div class="stat-sub">in catalogo</div>
+      </div>
+    </div>
+
+    <!-- Pipeline overview -->
+    <div class="card mb-16">
+      <div class="card-title">Pipeline Produzione — Ordini per fase</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+        ${FASI.map(f => `
+          <div style="background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r);padding:12px;text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:${faseCounts[f]>0?'var(--accent2)':'var(--text3)'};font-family:var(--mono);">${faseCounts[f]}</div>
+            <div style="font-size:10.5px;color:var(--text3);margin-top:4px;">${f}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Griglia: ordini attivi + stock alert -->
+    <div class="dash-grid">
+      <!-- Ordini attivi -->
+      <div class="table-wrap">
+        <div class="table-top">
+          <span class="table-title">Ordini Attivi</span>
+          <span class="table-count">${ordiniAttivi.length}</span>
+          <a href="/ordini.html" class="btn btn-ghost btn-xs ml-auto">Vedi tutti →</a>
+        </div>
+        ${ordiniAttivi.length === 0
+          ? `<div class="empty"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16"/><polyline points="14,2 14,8 20,8"/></svg><h3>Nessun ordine attivo</h3></div>`
+          : `<table class="tbl">
+              <thead><tr><th>Codice</th><th>N° ODA</th><th>Cliente</th><th>Fase</th><th>Prio</th></tr></thead>
+              <tbody>
+                ${ordiniAttivi.slice(0,8).map(o => `
+                  <tr onclick="window.location.href='/ordini.html'">
+                    <td class="mono">${o.id}</td>
+                    <td class="mono">${o.numero_oda || '—'}</td>
+                    <td class="main">${o.cliente}</td>
+                    <td><span style="font-size:11px;color:var(--text2)">${o.fase}</span></td>
+                    <td>${prioritaBadge(o.priorita)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>`
+        }
+      </div>
+
+      <!-- Stock alert -->
+      <div class="table-wrap">
+        <div class="table-top">
+          <span class="table-title">⚠ Scorte in Esaurimento</span>
+          <span class="table-count">${sottoScorta.length}</span>
+          <a href="/magazzino.html" class="btn btn-ghost btn-xs ml-auto">Vedi tutto →</a>
+        </div>
+        ${sottoScorta.length === 0
+          ? `<div class="empty"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg><h3>Tutte le scorte OK</h3></div>`
+          : `<table class="tbl">
+              <thead><tr><th>Codice</th><th>Descrizione</th><th>Qtà</th><th>Min</th></tr></thead>
+              <tbody>
+                ${sottoScorta.slice(0,8).map(p => `
+                  <tr onclick="window.location.href='/magazzino.html'">
+                    <td class="mono">${p.codice_jit}</td>
+                    <td class="main">${p.descrizione}</td>
+                    <td class="${qtyClass(p.quantita,p.scorta_min)}">${fmtQty(p.quantita)}</td>
+                    <td class="light">${fmtQty(p.scorta_min)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>`
+        }
+      </div>
+    </div>
+  `;
+}
+
+// Init
+(async () => {
+  document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+  const user = await AUTH.require();
+  if (!user) return;
+  initNav('dashboard');
+  AUTH.initNav();
+  await loadAll();
+})();
+</script>
+</body>
+</html>
