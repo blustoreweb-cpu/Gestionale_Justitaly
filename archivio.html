@@ -12,10 +12,10 @@
 <script src="js/config.js"></script>
 </head>
 <body>
-<div class="layout">
-  <div id="nav"></div>
+<div class="app">
+  <div class="sidebar" id="nav"></div>
 
-  <main class="main">
+  <div class="main">
     <div class="topbar">
       <div class="topbar-left">
         <h1 class="page-title">Archivio</h1>
@@ -78,7 +78,7 @@
 
     <!-- Pagination -->
     <div class="pagination" id="arch-pagination"></div>
-  </main>
+  </div>
 </div>
 
 <!-- Modal: Dettaglio archivio (read-only) -->
@@ -120,7 +120,7 @@ async function init() {
 async function loadArchivio() {
   try {
     const { data, error } = await sb.from('ordini')
-      .select('*, ordine_items(codice_jit, qty)')
+      .select('id,numero_oda,cliente,stato,priorita,fase,created_at,updated_at,completed_at,data_consegna,note,ordine_items(codice_jit,qty)')
       .in('stato', ['completato', 'annullato'])
       .order('updated_at', { ascending: false });
 
@@ -229,24 +229,26 @@ function goPag(p) { _archPage = p; renderPage(); window.scrollTo(0,0); }
 /* ── DETTAGLIO (read-only) ── */
 async function openDet(id) {
   const o = _archAll.find(x => x.id === id); if (!o) return;
-  document.getElementById('arch-det-id').textContent = id;
-  document.getElementById('arch-det-sub').textContent =
-    `${o.cliente} · ${statoBadgeText(o.stato)} · ${fmtDate(o.created_at)}`;
-  document.getElementById('arch-det-body').innerHTML =
-    '<div class="loading-state"><span class="spinner"></span> Caricamento…</div>';
-  openModal('m-arch-det');
+  try {
+    document.getElementById('arch-det-id').textContent = id;
+    document.getElementById('arch-det-sub').textContent =
+      `${o.cliente} · ${statoBadgeText(o.stato)} · ${fmtDate(o.created_at)}`;
+    document.getElementById('arch-det-body').innerHTML =
+      '<div class="loading-state"><span class="spinner"></span> Caricamento…</div>';
+    openModal('m-arch-det');
 
-  // Load items + spedizioni + movimenti
-  const [{ data: items }, { data: speds }, { data: movs }] = await Promise.all([
-    sb.from('ordine_items').select('*').eq('ordine_id', id),
-    sb.from('spedizioni').select('*').eq('ordine_id', id).order('created_at'),
-    sb.from('movimenti').select('*').eq('ordine_id', id).order('created_at'),
-  ]);
+    // Load items + spedizioni + movimenti
+    const [{ data: items, error: eItems }, { data: speds, error: eSpeds }, { data: movs, error: eMovs }] = await Promise.all([
+      sb.from('ordine_items').select('codice_jit,descrizione,qty,created_at').eq('ordine_id', id),
+      sb.from('spedizioni').select('qty,note,created_at').eq('ordine_id', id).order('created_at'),
+      sb.from('movimenti').select('tipo,qty,causale,created_at').eq('ordine_id', id).order('created_at'),
+    ]);
+    if (eItems || eSpeds || eMovs) throw (eItems || eSpeds || eMovs);
 
   const totPz  = (items||[]).reduce((s,i) => s + i.qty, 0);
   const spedPz = (speds||[]).reduce((s,s2) => s + s2.qty, 0);
 
-  document.getElementById('arch-det-body').innerHTML = `
+    document.getElementById('arch-det-body').innerHTML = `
     <div class="det-grid">
       <div class="det-left">
         <!-- Info card -->
@@ -311,6 +313,9 @@ async function openDet(id) {
         </div>` : ''}
       </div>
     </div>`;
+  } catch (e) {
+    toast('Errore dettaglio archivio: ' + e.message, 'err');
+  }
 }
 
 function statoBadgeText(stato) {
