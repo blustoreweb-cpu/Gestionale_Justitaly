@@ -1295,6 +1295,98 @@ body {
 }
 .tl-meta { color: #8a94b8; }
 
+/* Hotfix — Magazzino/Archivio modal form consistency */
+.modal-overlay {
+  backdrop-filter: blur(6px);
+}
+.modal-header,
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.modal-footer {
+  justify-content: flex-end;
+}
+.modal-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid #4a4f7d;
+  background: #212646;
+  color: #c9d0ef;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s ease;
+}
+.modal-close:hover {
+  background: #2a315b;
+  color: #f0f3ff;
+  border-color: #6f75b0;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.form-row .form-group:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.form-input,
+.modal .form-input,
+.modal .form-inp,
+.modal .form-sel,
+.modal .form-txt {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid #4a4f7d;
+  background: #1c2140;
+  color: #e8ecff;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.form-input::placeholder,
+.modal .form-inp::placeholder,
+.modal .form-txt::placeholder {
+  color: #929cc2;
+}
+.form-input:focus,
+.modal .form-input:focus,
+.modal .form-inp:focus,
+.modal .form-sel:focus,
+.modal .form-txt:focus {
+  border-color: #7b7ef8;
+  background: #21274b;
+  box-shadow: 0 0 0 1px rgba(123,126,248,.45), 0 0 0 4px rgba(123,126,248,.14);
+}
+.modal .form-label,
+.modal .form-lbl {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: #a7b1d4;
+  margin-bottom: 6px;
+}
+.modal .btn.btn-primary {
+  box-shadow: 0 8px 20px rgba(93, 99, 240, .35);
+}
+.modal .btn.btn-ghost {
+  background: #242a4c;
+  border-color: #4b5280;
+  color: #c9d0ed;
+}
+.modal .btn.btn-ghost:hover {
+  background: #2b335c;
+}
+
 /* Login refresh */
 .login-bg {
   background:
@@ -1318,4 +1410,5 @@ body {
   .dash-grid { grid-template-columns: 1fr; }
   .pipeline-grid { grid-template-columns: 1fr 1fr; }
   .dash-hero { flex-direction: column; align-items: flex-start; }
+  .form-row { grid-template-columns: 1fr; }
 }
