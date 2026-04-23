@@ -26,7 +26,7 @@ function closeModal(id) {
 // Chiudi modal con Esc
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    document.querySelectorAll('.overlay.open').forEach(o => {
+    document.querySelectorAll('.overlay.open, .modal-overlay.open').forEach(o => {
       o.classList.remove('open');
       document.body.style.overflow = '';
     });
@@ -35,7 +35,7 @@ document.addEventListener('keydown', e => {
 
 // Chiudi modal cliccando overlay
 document.addEventListener('click', e => {
-  if (e.target.classList.contains('overlay')) {
+  if (e.target.classList.contains('overlay') || e.target.classList.contains('modal-overlay')) {
     e.target.classList.remove('open');
     document.body.style.overflow = '';
   }
