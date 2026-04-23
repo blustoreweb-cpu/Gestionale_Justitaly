@@ -1,2 +1,2 @@
 # Gestionale_Justitaly
-Gestionale Justitaly per gione ordi
+Gestionale Justitaly per gestionale
