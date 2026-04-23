@@ -12,10 +12,10 @@
 <script src="js/config.js"></script>
 </head>
 <body>
-<div class="layout">
-  <div id="nav"></div>
+<div class="app">
+  <div class="sidebar" id="nav"></div>
 
-  <main class="main">
+  <div class="main">
     <div class="topbar">
       <div class="topbar-left">
         <h1 class="page-title">Magazzino</h1>
@@ -69,8 +69,7 @@
             <th class="text-right">Soglia</th>
             <th class="text-right">Giacenza %</th>
             <th>Unità</th>
-            <th>Fornitore</th>
-            <th>Azioni</th>
+                        <th>Azioni</th>
           </tr>
         </thead>
         <tbody id="mag-tbody"></tbody>
@@ -81,7 +80,7 @@
         <div class="empty-sub">Prova a cambiare i filtri o aggiungi un nuovo prodotto</div>
       </div>
     </div>
-  </main>
+  </div>
 </div>
 
 <!-- Modal: Add / Edit Prodotto -->
@@ -130,10 +129,6 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Fornitore</label>
-          <input class="form-input" id="prod-forn" type="text" placeholder="es. NXP Semiconductors">
-        </div>
         <div class="form-group">
           <label class="form-label">Note</label>
           <input class="form-input" id="prod-note" type="text" placeholder="Opzionale">
@@ -216,7 +211,7 @@ async function init() {
 async function loadMagazzino() {
   try {
     await API.loadProdotti();
-    _prodotti = API.S.prodotti;
+    _prodotti = S.prodotti;
     renderStats();
     renderMagazzino();
     updateSubtitle();
@@ -227,14 +222,14 @@ async function loadMagazzino() {
 }
 
 function updateSubtitle() {
-  const low = _prodotti.filter(p => p.quantita <= p.soglia_minima).length;
+  const low = _prodotti.filter(p => p.quantita <= p.scorta_min).length;
   document.getElementById('mag-subtitle').textContent =
     `${_prodotti.length} prodotti · ${low > 0 ? low + ' sotto soglia' : 'tutti ok'}`;
 }
 
 function renderStats() {
   const total = _prodotti.length;
-  const low   = _prodotti.filter(p => p.quantita <= p.soglia_minima).length;
+  const low   = _prodotti.filter(p => p.quantita <= p.scorta_min).length;
   const zero  = _prodotti.filter(p => p.quantita === 0).length;
   const cats  = new Set(_prodotti.map(p => p.categoria)).size;
   document.getElementById('mag-stats').innerHTML = `
@@ -262,10 +257,10 @@ function renderMagazzino() {
   const stato = document.getElementById('fil-stato-mag').value;
 
   let list = _prodotti.filter(p => {
-    if (q && !p.codice_jit?.toLowerCase().includes(q) && !p.descrizione?.toLowerCase().includes(q) && !p.fornitore?.toLowerCase().includes(q)) return false;
+    if (q && !p.codice_jit?.toLowerCase().includes(q) && !p.descrizione?.toLowerCase().includes(q) ) return false;
     if (cat && p.categoria !== cat) return false;
-    if (stato === 'low' && p.quantita > p.soglia_minima) return false;
-    if (stato === 'ok'  && p.quantita <= p.soglia_minima) return false;
+    if (stato === 'low' && p.quantita > p.scorta_min) return false;
+    if (stato === 'ok'  && p.quantita <= p.scorta_min) return false;
     return true;
   });
 
@@ -282,23 +277,22 @@ function renderMagazzino() {
   const frag = document.createDocumentFragment();
   list.forEach(p => {
     const tr = document.createElement('tr');
-    const pct = p.soglia_minima > 0 ? Math.round((p.quantita / p.soglia_minima) * 100) : 100;
-    const cls = p.quantita === 0 ? 'qty-zero' : p.quantita <= p.soglia_minima ? 'qty-low' : 'qty-ok';
+    const pct = p.scorta_min > 0 ? Math.round((p.quantita / p.scorta_min) * 100) : 100;
+    const cls = p.quantita === 0 ? 'qty-zero' : p.quantita <= p.scorta_min ? 'qty-low' : 'qty-ok';
     tr.innerHTML = `
       <td><span class="code-badge">${p.codice_jit}</span></td>
       <td>${p.descrizione || '—'}</td>
       <td><span class="badge badge-cat">${p.categoria || '—'}</span></td>
-      <td class="text-right"><span class="${cls}">${fmtQty(p.quantita)} ${p.unita_misura}</span></td>
-      <td class="text-right text-muted">${fmtQty(p.soglia_minima)}</td>
+      <td class="text-right"><span class="${cls}">${fmtQty(p.quantita)} ${p.unita}</span></td>
+      <td class="text-right text-muted">${fmtQty(p.scorta_min)}</td>
       <td class="text-right">
         <div class="pct-wrap">
           <div class="pct-bar"><div class="pct-fill ${cls}" style="width:${Math.min(pct,100)}%"></div></div>
           <span class="pct-label ${cls}">${pct}%</span>
         </div>
       </td>
-      <td class="text-muted">${p.unita_misura}</td>
-      <td class="text-muted">${p.fornitore || '—'}</td>
-      <td class="actions-cell">
+      <td class="text-muted">${p.unita}</td>
+            <td class="actions-cell">
         <button class="btn-action" title="Carico/Scarico" onclick="openMovimento('${p.codice_jit}')">±</button>
         <button class="btn-action" title="Storico" onclick="openStorico('${p.codice_jit}')">📋</button>
         <button class="btn-action" title="Modifica" onclick="openEditProd('${p.codice_jit}')">✎</button>
@@ -317,7 +311,7 @@ function openMovimento(codice) {
   document.getElementById('mov-title').textContent = 'Movimento — ' + codice;
   document.getElementById('mov-prod-info').innerHTML =
     `<strong>${p.descrizione}</strong><br>
-     Giacenza attuale: <strong>${fmtQty(p.quantita)} ${p.unita_misura}</strong> &nbsp;·&nbsp; Soglia: ${fmtQty(p.soglia_minima)}`;
+     Giacenza attuale: <strong>${fmtQty(p.quantita)} ${p.unita}</strong> &nbsp;·&nbsp; Soglia: ${fmtQty(p.scorta_min)}`;
   document.getElementById('mov-qty').value = '';
   document.getElementById('mov-causale').value = '';
   document.getElementById('mov-tipo').value = 'carico';
@@ -364,7 +358,7 @@ async function openStorico(codice) {
   openModal('m-storico');
 
   const { data, error } = await sb.from('movimenti')
-    .select('*').eq('codice_jit', codice)
+    .select('created_at,tipo,qty,causale,ordine_id').eq('codice_jit', codice)
     .order('created_at', { ascending: false }).limit(100);
 
   if (error || !data?.length) {
@@ -408,9 +402,8 @@ function openEditProd(codice) {
   document.getElementById('prod-cat').value      = p.categoria || '';
   document.getElementById('prod-desc').value     = p.descrizione || '';
   document.getElementById('prod-qty').value      = p.quantita;
-  document.getElementById('prod-soglia').value   = p.soglia_minima;
-  document.getElementById('prod-um').value       = p.unita_misura || 'pz';
-  document.getElementById('prod-forn').value     = p.fornitore || '';
+  document.getElementById('prod-soglia').value   = p.scorta_min;
+  document.getElementById('prod-um').value       = p.unita || 'pz';
   document.getElementById('prod-note').value     = p.note || '';
   openModal('m-add-prod');
 }
@@ -425,7 +418,6 @@ function resetProdForm() {
   document.getElementById('prod-qty').value      = '0';
   document.getElementById('prod-soglia').value   = '1000';
   document.getElementById('prod-um').value       = 'pz';
-  document.getElementById('prod-forn').value     = '';
   document.getElementById('prod-note').value     = '';
 }
 
@@ -437,13 +429,12 @@ async function salvaProdotto() {
   const qty     = parseInt(document.getElementById('prod-qty').value) || 0;
   const soglia  = parseInt(document.getElementById('prod-soglia').value) || 0;
   const um      = document.getElementById('prod-um').value;
-  const forn    = document.getElementById('prod-forn').value.trim();
   const note    = document.getElementById('prod-note').value.trim();
 
   if (!codice || !cat || !desc) { toast('Compila i campi obbligatori *', 'err'); return; }
 
   const payload = { categoria: cat, descrizione: desc, quantita: qty,
-                    soglia_minima: soglia, unita_misura: um, fornitore: forn, note };
+                    scorta_min: soglia, unita: um, note };
 
   let error;
   if (editId) {
@@ -461,10 +452,10 @@ async function salvaProdotto() {
 
 /* ── EXPORT CSV ── */
 function exportCSV() {
-  const headers = ['Codice JIT','Descrizione','Categoria','Quantità','Soglia','Unità','Fornitore','Note'];
+  const headers = ['Codice JIT','Descrizione','Categoria','Quantità','Soglia','Unità','Note'];
   const rows = _prodotti.map(p =>
-    [p.codice_jit, p.descrizione, p.categoria, p.quantita, p.soglia_minima,
-     p.unita_misura, p.fornitore || '', p.note || ''].map(v => `"${v}"`).join(',')
+    [p.codice_jit, p.descrizione, p.categoria, p.quantita, p.scorta_min,
+     p.unita, p.note || ''].map(v => `"${v}"`).join(',')
   );
   const csv  = [headers.join(','), ...rows].join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });

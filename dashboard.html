@@ -18,9 +18,10 @@
 
   <div class="main">
     <div class="topbar">
-      <span class="topbar-title">Dashboard</span>
-      <span class="topbar-sep">·</span>
-      <span class="topbar-sub" id="topbar-date"></span>
+      <div class="topbar-left">
+        <span class="topbar-title">Dashboard</span>
+        <span class="topbar-sub" id="topbar-date"></span>
+      </div>
       <div class="topbar-right">
         <button class="btn btn-ghost btn-sm" onclick="loadAll(true)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -70,8 +71,16 @@ function render() {
   ordiniAttivi.forEach(o => { if (faseCounts[o.fase] !== undefined) faseCounts[o.fase]++; });
 
   document.getElementById('content').innerHTML = `
+    <div class="dash-hero mb-16">
+      <div>
+        <div class="dash-hero-title">Panoramica Operativa</div>
+        <div class="dash-hero-sub">Controllo rapido produzione, ordini e scorte</div>
+      </div>
+      <a href="/ordini.html" class="btn btn-primary btn-sm">Apri Ordini</a>
+    </div>
+
     <!-- Stats -->
-    <div class="stats-grid">
+    <div class="stats-grid stats-grid-dash">
       <div class="stat-card">
         <div class="stat-label">Ordini Aperti</div>
         <div class="stat-val accent">${S.ordini.filter(o=>o.stato==='aperto').length}</div>
@@ -107,11 +116,11 @@ function render() {
     <!-- Pipeline overview -->
     <div class="card mb-16">
       <div class="card-title">Pipeline Produzione — Ordini per fase</div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+      <div class="pipeline-grid">
         ${FASI.map(f => `
-          <div style="background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r);padding:12px;text-align:center;">
-            <div style="font-size:22px;font-weight:700;color:${faseCounts[f]>0?'var(--accent2)':'var(--text3)'};font-family:var(--mono);">${faseCounts[f]}</div>
-            <div style="font-size:10.5px;color:var(--text3);margin-top:4px;">${f}</div>
+          <div class="pipeline-card">
+            <div class="pipeline-val ${faseCounts[f]>0?'has-val':''}">${faseCounts[f]}</div>
+            <div class="pipeline-name">${f}</div>
           </div>
         `).join('')}
       </div>

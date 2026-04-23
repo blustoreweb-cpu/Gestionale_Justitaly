@@ -18,7 +18,10 @@
 
   <div class="main">
     <div class="topbar">
-      <span class="topbar-title">Ordini</span>
+      <div class="topbar-left">
+        <span class="topbar-title">Ordini</span>
+        <span class="page-subtitle">Flusso operativo e avanzamento ordini</span>
+      </div>
       <div class="topbar-right">
         <button class="btn btn-ghost btn-sm" onclick="loadPage(true)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -30,9 +33,9 @@
       </div>
     </div>
 
-    <div class="main" style="overflow:hidden;display:flex;flex-direction:column;">
+    <div class="page-shell">
       <!-- Filtri -->
-      <div class="table-top" style="background:var(--bg3);border-bottom:1px solid var(--border2);">
+      <div class="table-top section-filters">
         <div class="search-wrap">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input class="search-input" id="q-search" type="text" placeholder="Cerca per cliente, ID, N° ODA…">
@@ -63,7 +66,7 @@
       </div>
 
       <!-- Tabella -->
-      <div style="flex:1;overflow-y:auto;">
+      <div class="table-region">
         <table class="tbl" id="ord-table">
           <thead>
             <tr>

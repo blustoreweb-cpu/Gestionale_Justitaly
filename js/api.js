@@ -14,6 +14,11 @@ const S = {
 
 // ── API ──────────────────────────────────────────────
 const API = {
+  S,
+  _newIdempotencyKey() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  },
 
   /* ──────────────────── PRODOTTI ──────────────────── */
 
@@ -54,16 +59,18 @@ const API = {
   },
 
   async addMovimento(codice_jit, tipo, qty, causale, ordine_id = null) {
-    await sb.from('movimenti').insert({ codice_jit, tipo, qty, causale, ordine_id });
+    const { error } = await sb.from('movimenti').insert({ codice_jit, tipo, qty, causale, ordine_id });
+    if (error) throw error;
   },
 
   async loadMovimentiProdotto(codice_jit) {
-    const { data } = await sb
+    const { data, error } = await sb
       .from('movimenti')
-      .select('*')
+      .select('id,codice_jit,tipo,qty,causale,ordine_id,created_at')
       .eq('codice_jit', codice_jit)
       .order('created_at', { ascending: false })
       .limit(50);
+    if (error) throw error;
     return data ?? [];
   },
 
@@ -88,29 +95,32 @@ const API = {
 
   async loadOrdineItems(ordine_id, force = false) {
     if (!force && S.items[ordine_id]) return S.items[ordine_id];
-    const { data } = await sb
+    const { data, error } = await sb
       .from('ordine_items')
       .select('id,codice_jit,descrizione,qty')
       .eq('ordine_id', ordine_id)
       .order('created_at');
+    if (error) throw error;
     S.items[ordine_id] = data ?? [];
     return S.items[ordine_id];
   },
 
   async loadSpedizioni(ordine_id, force = false) {
     if (!force && S.spedizioni[ordine_id]) return S.spedizioni[ordine_id];
-    const { data } = await sb
+    const { data, error } = await sb
       .from('spedizioni')
       .select('id,qty,note,created_at')
       .eq('ordine_id', ordine_id)
       .order('created_at');
+    if (error) throw error;
     S.spedizioni[ordine_id] = data ?? [];
     return S.spedizioni[ordine_id];
   },
 
   // Genera ID ordine via RPC
   async newOrdineId() {
-    const { data } = await sb.rpc('genera_ordine_id');
+    const { data, error } = await sb.rpc('genera_ordine_id');
+    if (error) throw error;
     return data;
   },
 
@@ -133,7 +143,7 @@ const API = {
     // Log
     await sb.from('movimenti').insert({
       codice_jit: '',
-      tipo: 'nota',
+      tipo: 'note',
       qty: 0,
       causale: `Ordine ${id} creato`,
       ordine_id: id,
@@ -165,63 +175,31 @@ const API = {
   },
 
   async spedizioneParziale(ordine_id, qty, note) {
-    // Salva spedizione
-    const { error } = await sb.from('spedizioni').insert({ ordine_id, qty, note });
+    const idempotency_key = this._newIdempotencyKey();
+    const { error } = await sb.rpc('rpc_spedizione_parziale', {
+      p_ordine_id: ordine_id,
+      p_qty: qty,
+      p_note: note || null,
+      p_idempotency_key: idempotency_key,
+    });
     if (error) throw error;
 
-    // Scarica stock proporzionale
-    const items = await this.loadOrdineItems(ordine_id);
-    const totItems = items.reduce((s, it) => s + it.qty, 0);
-    if (totItems > 0) {
-      for (const it of items) {
-        const p = this.getProdotto(it.codice_jit);
-        if (!p) continue;
-        const quota = Math.round(qty * (it.qty / totItems));
-        if (quota <= 0) continue;
-        const newQ = Math.max(0, p.quantita - quota);
-        await this.updateProdotto(p.id, { quantita: newQ });
-        await this.addMovimento(it.codice_jit, 'parziale', -quota, `Spedizione parziale ${ordine_id}`, ordine_id);
-      }
-    }
-
+    S._dirty.prodotti = true;
     delete S.spedizioni[ordine_id];
+    delete S.items[ordine_id];
   },
 
   async completaOrdine(ordine_id, scarti) {
-    const items    = await this.loadOrdineItems(ordine_id);
-    const sped     = await this.loadSpedizioni(ordine_id);
-    const totSped  = sped.reduce((s, sp) => s + sp.qty, 0);
-    const totItems = items.reduce((s, it) => s + it.qty, 0);
-    const residuo  = totItems - totSped;
-
-    // Aggiorna stato ordine
-    await this.updateOrdine(ordine_id, {
-      stato: 'completato',
-      fase:  'Spedizione',
-      completed_at: new Date().toISOString(),
+    const idempotency_key = this._newIdempotencyKey();
+    const { error } = await sb.rpc('rpc_completa_ordine', {
+      p_ordine_id: ordine_id,
+      p_scarti: scarti || [],
+      p_idempotency_key: idempotency_key,
     });
+    if (error) throw error;
 
-    // Scarica residuo dallo stock
-    if (residuo > 0) {
-      for (const it of items) {
-        const p = this.getProdotto(it.codice_jit);
-        if (!p) continue;
-        const quota = Math.round(residuo * (it.qty / totItems));
-        if (quota <= 0) continue;
-        let scartoItem = scarti?.find(s => s.codice_jit === it.codice_jit);
-        let scartoQty  = scartoItem?.qty || 0;
-        const spedQty  = Math.max(0, quota - scartoQty);
-        if (spedQty > 0) {
-          const newQ = Math.max(0, p.quantita - spedQty);
-          await this.updateProdotto(p.id, { quantita: newQ });
-          await this.addMovimento(it.codice_jit, 'ordine', -spedQty, `Completamento ${ordine_id}`, ordine_id);
-        }
-        if (scartoQty > 0) {
-          await this.addMovimento(it.codice_jit, 'scarto', -scartoQty, `Scarti completamento ${ordine_id}`, ordine_id);
-        }
-      }
-    }
-
+    S._dirty.prodotti = true;
+    S._dirty['ordini_all'] = true;
     delete S.spedizioni[ordine_id];
     delete S.items[ordine_id];
   },
@@ -230,7 +208,7 @@ const API = {
     await this.updateOrdine(ordine_id, { stato: 'annullato' });
     await sb.from('movimenti').insert({
       codice_jit: '',
-      tipo: 'nota',
+      tipo: 'note',
       qty: 0,
       causale: `Ordine ${ordine_id} annullato`,
       ordine_id,
@@ -247,20 +225,21 @@ const API = {
   },
 
   async loadMovimentiOrdine(ordine_id) {
-    const { data } = await sb
+    const { data, error } = await sb
       .from('movimenti')
-      .select('*')
+      .select('id,codice_jit,tipo,qty,causale,ordine_id,created_at')
       .eq('ordine_id', ordine_id)
       .order('created_at');
+    if (error) throw error;
     return data ?? [];
   },
 
   /* ──────────────────── DASHBOARD ─────────────────── */
   async getDashStats() {
     const [{ count: aperti }, { count: lavorazione }, { count: completati }] = await Promise.all([
-      sb.from('ordini').select('*', { count: 'exact', head: true }).eq('stato', 'aperto'),
-      sb.from('ordini').select('*', { count: 'exact', head: true }).eq('stato', 'in_lavorazione'),
-      sb.from('ordini').select('*', { count: 'exact', head: true }).eq('stato', 'completato'),
+      sb.from('ordini').select('id', { count: 'exact', head: true }).eq('stato', 'aperto'),
+      sb.from('ordini').select('id', { count: 'exact', head: true }).eq('stato', 'in_lavorazione'),
+      sb.from('ordini').select('id', { count: 'exact', head: true }).eq('stato', 'completato'),
     ]);
     const sottoScorta = S.prodotti.filter(p => p.quantita <= p.scorta_min).length;
     return { aperti, lavorazione, completati, sottoScorta };

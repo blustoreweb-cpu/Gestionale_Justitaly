@@ -105,3 +105,8 @@ function initNav(activePage) {
   // Expose per update esterno
   window.refreshNavBadges = () => { refreshAlertPill(); refreshBadge(); };
 }
+
+// Compatibilità retro: alcune pagine usano NAV.init(...)
+window.NAV = window.NAV || {
+  init: initNav
+};
