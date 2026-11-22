@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=55196860-22c9-46ae-af12-eb88b9df04df
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Spesa">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#16a34a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Spesa</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#111827;--mute:#6b7280;--line:#e5e7eb;--accent:#16a34a;--accent-d:#15803d;--bad:#dc2626;--warn:#d97706}
+@media(prefers-color-scheme:dark){:root{--bg:#0b0f14;--card:#151b23;--text:#f3f4f6;--mute:#9ca3af;--line:#263040;--accent:#22c55e;--accent-d:#16a34a}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+body{padding-top:env(safe-area-inset-top);padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 12px}h2{font-size:15px;margin:22px 0 8px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.row{display:flex;align-items:center;gap:10px}.sp{flex:1;min-width:0}
+.mute{color:var(--mute);font-size:13px}.big{font-size:44px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.price{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.disc{color:var(--accent);font-size:12px;font-weight:600}
+input,select,button{font:inherit;color:inherit}
+input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);margin:4px 0 10px}
+label{font-size:13px;color:var(--mute)}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;background:var(--accent);color:#fff;font-weight:600;text-align:center}
+.btn:active{background:var(--accent-d)}.btn.sec{background:var(--card);color:var(--text);border:1px solid var(--line)}.btn.bad{background:var(--bad)}
+.btn.sm{display:inline-block;width:auto;padding:8px 14px;border-radius:10px;font-size:14px}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:20}
+.tabs button{flex:1;border:0;background:none;padding:10px 0 8px;font-size:11px;color:var(--mute)}
+.tabs button.on{color:var(--accent);font-weight:600}.tabs span{display:block;font-size:22px;line-height:1.1}
+.fab{position:fixed;left:16px;right:16px;bottom:calc(70px + env(safe-area-inset-bottom));max-width:528px;margin:0 auto;z-index:15;display:flex;gap:8px}
+.fab .btn{box-shadow:0 6px 20px rgba(22,163,74,.35)}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--bg)}
+.spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite;display:inline-block}@keyframes s{to{transform:rotate(360deg)}}
+.bar{height:10px;border-radius:5px;background:var(--accent);min-width:2px}
+.bars .r{display:grid;grid-template-columns:78px 1fr 70px;gap:8px;align-items:center;margin:7px 0;font-size:14px}
+.bars .r .t{text-align:right}.chip{display:inline-block;padding:2px 8px;border-radius:99px;background:var(--bg);font-size:12px;color:var(--mute)}
+.err{color:var(--bad);font-size:14px;margin:6px 0}.up{color:var(--bad)}.down{color:var(--accent)}
+.stepper{display:flex;align-items:center;gap:10px}.stepper button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:20px}
+a{color:var(--accent)}
+</style>
+<style>#nl-badge-frame{display:none!important}</style>
+<style id="fx">
+body{background:transparent}
+body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;filter:blur(24px);will-change:transform;
+ background:radial-gradient(40% 34% at 14% 8%,var(--g1,rgba(34,197,94,.30)),transparent 70%),radial-gradient(36% 30% at 92% 18%,rgba(56,189,248,.22),transparent 70%),radial-gradient(42% 36% at 72% 96%,rgba(168,85,247,.20),transparent 70%);
+ animation:aur 18s ease-in-out infinite alternate}
+@keyframes aur{to{transform:translate3d(5%,4%,0) scale(1.15) rotate(5deg)}}
+.card{background:color-mix(in srgb,var(--card) 80%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5);border:1px solid color-mix(in srgb,var(--text) 9%,transparent);box-shadow:0 10px 30px rgba(0,0,0,.10)}
+.wrap>.card,.wrap>.row,.wrap>h1,.wrap>p{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.wrap>*:nth-child(2){animation-delay:.05s}.wrap>*:nth-child(3){animation-delay:.1s}.wrap>*:nth-child(4){animation-delay:.15s}.wrap>*:nth-child(5){animation-delay:.2s}.wrap>*:nth-child(6){animation-delay:.24s}.wrap>*:nth-child(n+7){animation-delay:.28s}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}}
+.card:has(#tot){position:relative;overflow:hidden;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent),0 12px 40px rgba(34,197,94,.22)}
+.card:has(#tot)::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.18) 50%,transparent 65%);transform:translateX(-120%);animation:sheen 5s ease-in-out infinite;pointer-events:none}
+@keyframes sheen{60%,100%{transform:translateX(120%)}}
+#tot{background:linear-gradient(90deg,var(--accent),#38bdf8,#a855f7,var(--accent));background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:flow 7s linear infinite;display:inline-block}
+@keyframes flow{to{background-position:300% 0}}
+#tot.bump{animation:flow 7s linear infinite,bump .5s cubic-bezier(.2,1.5,.4,1)}
+@keyframes bump{40%{transform:scale(1.12)}}
+.pop{animation:pop .7s cubic-bezier(.2,1.4,.4,1) both,glow 1.6s ease-out!important}
+@keyframes pop{from{opacity:0;transform:translateX(-24px) scale(.94)}}
+@keyframes glow{0%{box-shadow:0 0 0 2px var(--accent),0 0 30px rgba(34,197,94,.6)}100%{box-shadow:0 10px 30px rgba(0,0,0,.10)}}
+.btn{background:linear-gradient(135deg,var(--accent),#10b981 60%,#06b6d4);transition:transform .15s cubic-bezier(.3,1.6,.5,1),box-shadow .2s;position:relative;overflow:hidden}
+.btn:active{transform:scale(.96);background:linear-gradient(135deg,var(--accent-d),#059669)}
+.btn.sec{background:color-mix(in srgb,var(--card) 75%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.btn.bad{background:linear-gradient(135deg,#f87171,#dc2626)}
+.fab label.btn::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.35) 50%,transparent 60%);transform:translateX(-130%);animation:sheen 4.2s ease-in-out infinite;pointer-events:none}
+.fab .btn{box-shadow:0 8px 28px rgba(16,185,129,.45)}
+.tabs{background:color-mix(in srgb,var(--card) 68%,transparent);-webkit-backdrop-filter:blur(20px) saturate(1.7);backdrop-filter:blur(20px) saturate(1.7)}
+.tabs span{transition:transform .3s cubic-bezier(.3,1.7,.5,1),filter .3s}
+.tabs button.on span{transform:translateY(-3px) scale(1.18);filter:drop-shadow(0 0 8px var(--accent))}
+.sheet-bg{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:fade .25s both}
+@keyframes fade{from{opacity:0}}
+.sheet{animation:slide .42s cubic-bezier(.2,.9,.3,1.08) both;background:color-mix(in srgb,var(--card) 92%,transparent);box-shadow:0 -20px 60px rgba(0,0,0,.35)}
+@keyframes slide{from{transform:translateY(100%)}}
+.scanbox{position:relative;width:200px;height:120px;margin:4px auto 18px;border-radius:14px;background:color-mix(in srgb,var(--accent) 7%,transparent);
+ --c:linear-gradient(var(--accent),var(--accent));
+ background-image:var(--c),var(--c),var(--c),var(--c),var(--c),var(--c),var(--c),var(--c);background-repeat:no-repeat;
+ background-size:26px 3px,3px 26px,26px 3px,3px 26px,26px 3px,3px 26px,26px 3px,3px 26px;
+ background-position:0 0,0 0,100% 0,100% 0,0 100%,0 100%,100% 100%,100% 100%;animation:breathe 1.6s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.04);filter:drop-shadow(0 0 10px var(--accent))}}
+.laser{position:absolute;left:6%;right:6%;height:3px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--accent),#fff,var(--accent),transparent);box-shadow:0 0 16px 2px var(--accent);animation:laser 1.5s ease-in-out infinite alternate}
+@keyframes laser{from{top:8%}to{top:88%}}
+.dots::after{content:"";animation:dots 1.4s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+.bar{transform-origin:left;background:linear-gradient(90deg,var(--accent),#38bdf8);animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{transform:scaleX(0)}}
+.toast{position:fixed;left:16px;right:16px;top:calc(12px + env(safe-area-inset-top));max-width:520px;margin:0 auto;z-index:120;padding:12px 16px;border-radius:14px;font-weight:600;text-align:center;color:#fff;background:linear-gradient(135deg,#f59e0b,#ef4444);box-shadow:0 12px 40px rgba(0,0,0,.35);animation:drop .5s cubic-bezier(.2,1.3,.4,1) both}
+.toast.ok{background:linear-gradient(135deg,var(--accent),#06b6d4)}
+@keyframes drop{from{transform:translateY(-120%);opacity:0}}
+.budget{margin-top:12px;text-align:left}.budget .tr{height:8px;border-radius:5px;background:color-mix(in srgb,var(--text) 10%,transparent);overflow:hidden;margin-top:6px}
+.budget .fl{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),#38bdf8);transition:width .6s cubic-bezier(.2,.8,.2,1),background .3s}
+.budget.warn .fl{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.budget.over .fl{background:linear-gradient(90deg,#ef4444,#f87171)}.budget.over b{color:var(--bad)}
+.cico{width:44px;height:44px;flex:none;border-radius:14px;display:grid;place-items:center;font-size:22px;background:linear-gradient(145deg,hsl(var(--h) 85% 62% / .30),hsl(var(--h) 85% 50% / .14));box-shadow:inset 0 0 0 1px hsl(var(--h) 80% 55% / .35)}
+.cico.sm{width:34px;height:34px;border-radius:11px;font-size:18px}
+.cat{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 8px;border-radius:99px;font-size:12px;font-weight:600;line-height:1.3;color:hsl(var(--h) 70% 32%);background:hsl(var(--h) 85% 55% / .16)}
+@media(prefers-color-scheme:dark){.cat{color:hsl(var(--h) 85% 76%)}}
+.item .nm{font-weight:600;font-size:16px;line-height:1.25;word-break:break-word}
+.item .meta{font-size:13px;color:var(--mute);margin-top:2px}
+.item .tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:7px}
+.item .price{font-size:17px}
+.dtag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:700;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.catlist .cr{margin:14px 0}.catlist .cr:first-child{margin-top:4px}.catlist .cr:last-child{margin-bottom:2px}
+.catlist .top{display:flex;align-items:center;gap:12px}
+.catlist .nm{flex:1;min-width:0;font-weight:600;font-size:15px}.catlist .pc{font-size:12px;color:var(--mute);font-weight:500}
+.catlist .am{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.catlist .trk{height:8px;border-radius:5px;background:color-mix(in srgb,var(--text) 9%,transparent);overflow:hidden;margin:9px 0 0 56px}
+.catlist .trk i{display:block;height:100%;border-radius:5px;transform-origin:left;background:linear-gradient(90deg,hsl(var(--h) 80% 52%),hsl(var(--h) 85% 68%));animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+.bars .r{display:block;margin:12px 0}.bars .rt{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:5px}
+.bars .rl{font-weight:600;font-size:14px;min-width:0;word-break:break-word}.bars .t{text-align:right;white-space:nowrap}
+.lrow{gap:12px}.lrow .nm2{font-weight:600;font-size:16px;word-break:break-word}
+.lck{width:32px;height:32px;flex:none;border-radius:50%;border:2px solid var(--accent);background:transparent;color:transparent;font-size:16px;font-weight:700;line-height:1;transition:all .25s cubic-bezier(.3,1.6,.5,1)}
+.lck:active,.lrow.done .lck{background:var(--accent);color:#fff;transform:scale(1.12)}
+.lrow.done{animation:out .45s ease-in both}.lrow.done .nm2{text-decoration:line-through;color:var(--mute)}
+@keyframes out{60%{opacity:.5}100%{opacity:0;transform:translateX(60px) scale(.96);height:0;margin:0;padding:0}}
+.ldel{border:0;background:none;color:var(--mute);font-size:18px;padding:6px 4px}
+.lrow.gone{animation:out .45s ease-in both}
+.todo{display:flex;flex-wrap:wrap;gap:6px}
+.ins{display:block;margin:6px 0 0;padding:9px 12px;border-radius:12px;font-size:13px;font-weight:600;line-height:1.35;background:color-mix(in srgb,var(--text) 7%,transparent)}
+.ins.bad{color:#b91c1c;background:rgba(239,68,68,.14)}.ins.good{color:#15803d;background:rgba(34,197,94,.15)}.ins.warn{color:#b45309;background:rgba(245,158,11,.16)}
+@media(prefers-color-scheme:dark){.ins.bad{color:#fca5a5}.ins.good{color:#86efac}.ins.warn{color:#fcd34d}}
+.ins small{display:block;font-weight:500;opacity:.8}
+#insw{margin:2px 0 10px}
+.rcmp h4{margin:14px 0 6px;font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.rcmp .ln{display:flex;gap:10px;justify-content:space-between;font-size:14px;margin:5px 0}.rcmp .ln span:first-child{min-width:0;word-break:break-word}
+.rbadge{display:inline-block;margin-top:5px;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700}
+.rbadge.ok{color:#15803d;background:rgba(34,197,94,.15)}.rbadge.ko{color:#b45309;background:rgba(245,158,11,.18)}
+.seg{display:flex;gap:4px;padding:4px;border-radius:16px;margin:0 0 14px;background:color-mix(in srgb,var(--text) 8%,transparent)}
+.seg button{flex:1;border:0;border-radius:12px;padding:10px 8px;background:transparent;font-weight:600;font-size:14px;color:var(--mute);transition:all .25s cubic-bezier(.3,1.4,.5,1)}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 4px 14px rgba(0,0,0,.14)}
+.chip{transition:transform .15s}.chip:active{transform:scale(.92)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SB_URL = "https://rsjtinqmcjfbtixxdcpk.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzanRpbnFtY2pmYnRpeHhkY3BrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNTc2MzAsImV4cCI6MjEwOTczMzYzMH0.eInEWTjHgDJN9Kb7GQQSfIfV3Gh-3EZgUllgXG-LJFU";
+const sb = supabase.createClient(SB_URL, SB_KEY);
+const CATS = ["Frutta e verdura","Carne e pesce","Latticini e uova","Pane e dolci","Pasta, riso e dispensa","Bevande","Surgelati","Snack","Igiene e casa","Altro"];
+
+const CAT_META = {
+  "Frutta e verdura":["🥦",140],"Carne e pesce":["🥩",355],"Latticini e uova":["🧀",48],"Pane e dolci":["🥐",30],
+  "Pasta, riso e dispensa":["🍝",38],"Bevande":["🥤",200],"Surgelati":["🧊",190],"Snack":["🍿",280],"Igiene e casa":["🧴",262],"Altro":["🛒",215]
+};
+const catM = c => CAT_META[c] || CAT_META["Altro"];
+const catIcon = (c, sm) => `<div class="cico${sm ? " sm" : ""}" style="--h:${catM(c)[1]}">${catM(c)[0]}</div>`;
+const catBadge = c => `<span class="cat" style="--h:${catM(c)[1]}">${catM(c)[0]} ${esc(c)}</span>`;
+
+const S = { list:[], user:null, me:null, hh:null, names:{}, trip:null, items:[], tab:"spesa", sheet:false, rt:null, stats:null };
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur = n => (Number(n)||0).toLocaleString("it-IT",{style:"currency",currency:"EUR"});
+const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+const root = () => $("#app");
+
+
+// ---------- effetti ----------
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+let _lastTot = 0;
+function countUp(el, to) {
+  if (!el) return;
+  const from = _lastTot; _lastTot = to;
+  if (from === to || reduceMotion()) { el.textContent = eur(to); return; }
+  el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+  const t0 = performance.now(), d = 650;
+  const f = t => { const k = Math.min(1, (t - t0) / d), e = 1 - Math.pow(1 - k, 3); el.textContent = eur(from + (to - from) * e); if (k < 1) requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+}
+function confetti() {
+  if (reduceMotion()) return;
+  const cols = ["#22c55e", "#38bdf8", "#a855f7", "#facc15", "#fb7185"];
+  const box = document.createElement("div"); box.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:99;overflow:hidden";
+  document.body.appendChild(box);
+  const W = innerWidth, H = innerHeight;
+  for (let i = 0; i < 80; i++) {
+    const p = document.createElement("i"), sz = 6 + Math.random() * 7;
+    p.style.cssText = `position:absolute;left:50%;top:62%;width:${sz}px;height:${sz * .5}px;background:${cols[i % 5]};border-radius:2px`;
+    box.appendChild(p);
+    const x = (Math.random() - .5) * W * 1.1, y = -(120 + Math.random() * H * .5);
+    p.animate([{ transform: "translate(0,0) rotate(0)", opacity: 1 },
+      { transform: `translate(${x * .6}px,${y}px) rotate(${Math.random() * 360}deg)`, opacity: 1, offset: .45 },
+      { transform: `translate(${x}px,${y + H * 1.1}px) rotate(${Math.random() * 900}deg)`, opacity: 0 }],
+      { duration: 1800 + Math.random() * 900, easing: "cubic-bezier(.2,.7,.4,1)" });
+  }
+  setTimeout(() => box.remove(), 2900);
+}
+
+
+// ---------- preferenze, suoni, budget, tema negozio ----------
+const pref = {
+  get(k, d) { try { const v = localStorage.getItem("spesa_" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("spesa_" + k, JSON.stringify(v)); } catch {} }
+};
+let _ac;
+function audio() { try { _ac = _ac || new (window.AudioContext || window.webkitAudioContext)(); if (_ac.state === "suspended") _ac.resume(); return _ac; } catch { return null; } }
+document.addEventListener("touchstart", audio, { once: true, passive: true });
+document.addEventListener("click", audio, { once: true });
+function tone(f, t0, d, type = "sine", v = .12) {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .015); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + .02);
+}
+function sfx(kind) {
+  if (!pref.get("sound", true)) return;
+  if (kind === "add") { tone(880, 0, .12, "triangle"); tone(1320, .09, .2, "triangle"); }
+  else if (kind === "tap") tone(660, 0, .1, "triangle");
+  else if (kind === "warn") { tone(440, 0, .18, "square", .07); tone(330, .16, .3, "square", .07); }
+  else if (kind === "done") [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .09, .28, "triangle"));
+}
+function toast(msg, ok = false) {
+  document.querySelectorAll(".toast").forEach(t => t.remove());
+  const t = document.createElement("div"); t.className = "toast" + (ok ? " ok" : ""); t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3600);
+}
+const HUES = [142, 200, 265, 20, 330, 45, 175, 5];
+function storeHue(name) { let h = 0; for (const c of String(name).toLowerCase().trim()) h = (h * 31 + c.charCodeAt(0)) >>> 0; return HUES[h % HUES.length]; }
+function applyTheme(store) {
+  const r = document.documentElement.style, dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  if (!store) { ["--accent", "--accent-d", "--g1"].forEach(k => r.removeProperty(k)); return; }
+  const h = storeHue(store);
+  r.setProperty("--accent", `hsl(${h} 70% ${dark ? 55 : 40}%)`);
+  r.setProperty("--accent-d", `hsl(${h} 72% ${dark ? 44 : 31}%)`);
+  r.setProperty("--g1", `hsla(${h} 85% 52% / .30)`);
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = `hsl(${h} 70% 40%)`;
+}
+function budgetHtml() {
+  const b = Number(pref.get("budget", 0)), t = tripTotal();
+  if (!b) return `<div class="budget" style="text-align:center"><button class="chip" id="bud" style="border:0;cursor:pointer">🎯 Imposta un budget</button></div>`;
+  const pct = Math.min(100, t / b * 100), cls = t > b ? "over" : t >= b * .8 ? "warn" : "";
+  return `<div class="budget ${cls}" id="budw"><div class="row mute"><span class="sp">🎯 Budget ${eur(b)}</span><b>${t > b ? "sforato di " + eur(t - b) : "restano " + eur(b - t)}</b></div><div class="tr"><div class="fl" style="width:${pct}%"></div></div><div style="text-align:center;margin-top:6px"><button class="chip" id="bud" style="border:0;cursor:pointer">modifica</button></div></div>`;
+}
+function askBudget() {
+  const cur = pref.get("budget", 0);
+  const v = prompt("Budget per questa spesa in € (0 per toglierlo)", cur || "");
+  if (v === null) return;
+  pref.set("budget", Math.max(0, num(v))); render();
+}
+function budgetCheck(before, after) {
+  const b = Number(pref.get("budget", 0)); if (!b || after <= before) return false;
+  if (before <= b && after > b) { sfx("warn"); toast(`⚠️ Budget superato di ${eur(after - b)}`); return true; }
+  if (before < b * .8 && after >= b * .8) { sfx("warn"); toast(`Hai usato l'${Math.round(after / b * 100)}% del budget`); return true; }
+  return false;
+}
+
+// ---------- avvio ----------
+sb.auth.onAuthStateChange((ev, session) => {
+  if (ev === "INITIAL_SESSION" || ev === "SIGNED_IN" || ev === "SIGNED_OUT") setTimeout(() => boot(session), 0);
+});
+
+async function boot(session) {
+  S.user = session?.user || null;
+  if (!S.user) { stopRt(); return renderAuth(); }
+  root().innerHTML = `<div class="wrap"><p class="mute">Carico…</p></div>`;
+  const { data: m } = await sb.from("members").select("household_id,display_name,households(name,invite_code)").eq("user_id", S.user.id).limit(1).maybeSingle();
+  if (!m) return renderHousehold();
+  S.me = m; S.hh = m.households;
+  const { data: all } = await sb.from("members").select("user_id,display_name").eq("household_id", m.household_id);
+  S.names = Object.fromEntries((all||[]).map(x => [x.user_id, x.display_name]));
+  await loadTrip(); await loadList();
+  startRt();
+  render();
+}
+
+async function loadList() {
+  const { data } = await sb.from("shopping_list").select("*").eq("household_id", S.me.household_id).order("created_at");
+  S.list = data || [];
+}
+
+async function loadTrip() {
+  const { data: t } = await sb.from("trips").select("*").eq("household_id", S.me.household_id).eq("status","open").order("started_at",{ascending:false}).limit(1).maybeSingle();
+  S.trip = t || null;
+  S.items = [];
+  if (t) { const { data } = await sb.from("items").select("*").eq("trip_id", t.id).order("created_at"); S.items = data || []; }
+}
+
+function startRt() {
+  stopRt();
+  S.rt = sb.channel("hh").on("postgres_changes", { event:"*", schema:"public", table:"items", filter:`household_id=eq.${S.me.household_id}` }, onRt)
+    .on("postgres_changes", { event:"*", schema:"public", table:"trips", filter:`household_id=eq.${S.me.household_id}` }, onRt)
+    .on("postgres_changes", { event:"*", schema:"public", table:"shopping_list", filter:`household_id=eq.${S.me.household_id}` }, onRt).subscribe();
+}
+function stopRt() { if (S.rt) { sb.removeChannel(S.rt); S.rt = null; } }
+let rtTimer;
+function onRt() {
+  clearTimeout(rtTimer);
+  rtTimer = setTimeout(async () => { if (S.sheet) return; await loadTrip(); await loadList(); S.stats = null; if (S.tab === "spesa" || S.tab === "lista") render(); }, 300);
+}
+
+// ---------- auth ----------
+function renderAuth(mode = "login", msg = "") {
+  root().innerHTML = `<div class="wrap" style="padding-top:60px">
+    <div style="text-align:center;font-size:56px">🛒</div><h1 style="text-align:center">Spesa</h1>
+    <p class="mute" style="text-align:center">La spesa di coppia, prodotto per prodotto.</p>
+    <div class="card">
+      <label>Email</label><input id="em" type="email" autocomplete="email" inputmode="email">
+      <label>Password ${mode==="signup"?"(almeno 6 caratteri)":""}</label><input id="pw" type="password" autocomplete="${mode==="signup"?"new-password":"current-password"}">
+      <div class="err" id="msg">${esc(msg)}</div>
+      <button class="btn" id="go">${mode==="signup"?"Crea account":"Entra"}</button>
+      <p style="text-align:center;margin:14px 0 0"><a href="#" id="sw">${mode==="signup"?"Ho già un account":"Non ho un account"}</a></p>
+    </div></div>`;
+  $("#sw").onclick = e => { e.preventDefault(); renderAuth(mode === "signup" ? "login" : "signup"); };
+  $("#go").onclick = async () => {
+    const email = $("#em").value.trim(), password = $("#pw").value;
+    $("#go").disabled = true;
+    const r = mode === "signup" ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+    if (r.error) { $("#go").disabled = false; $("#msg").textContent = tr(r.error.message); }
+    else if (mode === "signup" && !r.data.session) renderAuth("login", "Account creato. Controlla l'email per confermarlo, poi entra.");
+  };
+}
+function tr(m) {
+  if (/Invalid login/i.test(m)) return "Email o password errati.";
+  if (/already registered/i.test(m)) return "Email già registrata: usa Entra.";
+  if (/Password should/i.test(m)) return "Password troppo corta (minimo 6 caratteri).";
+  if (/not confirmed/i.test(m)) return "Conferma prima l'email dal link che ti è arrivato.";
+  return m;
+}
+
+function renderHousehold(msg = "") {
+  root().innerHTML = `<div class="wrap" style="padding-top:40px"><h1>Benvenuto 👋</h1>
+    <p class="mute">Crea la vostra lista condivisa, oppure entra in quella del partner con il suo codice.</p>
+    <div class="card"><label>Il tuo nome</label><input id="dn" placeholder="es. Lorenzo">
+      <div class="err" id="msg">${esc(msg)}</div>
+      <h2 style="margin-top:8px">Nuovo gruppo</h2><input id="hn" placeholder="Nome del gruppo (es. Casa)">
+      <button class="btn" id="cr">Crea gruppo</button>
+      <h2>Ho un codice</h2><input id="cd" placeholder="Codice (6 caratteri)" style="text-transform:uppercase">
+      <button class="btn sec" id="jn">Entra nel gruppo</button></div>
+    <button class="btn sec" id="lo">Esci</button></div>`;
+  const need = () => { const n = $("#dn").value.trim(); if (!n) { $("#msg").textContent = "Scrivi il tuo nome."; return null; } return n; };
+  $("#cr").onclick = async () => { const n = need(); if (!n) return; const { error } = await sb.rpc("create_household", { hname: $("#hn").value.trim() || "Casa", dname: n }); error ? renderHousehold(error.message) : boot({ user: S.user }); };
+  $("#jn").onclick = async () => { const n = need(); if (!n) return; const { error } = await sb.rpc("join_household", { code: $("#cd").value, dname: n }); error ? renderHousehold(error.message) : boot({ user: S.user }); };
+  $("#lo").onclick = () => sb.auth.signOut();
+}
+
+// ---------- shell ----------
+function render() {
+  const tabs = [["spesa","🛒","Spesa"],["lista","📝","Lista"],["storico","🧾","Storico"],["andamento","📈","Andamento"],["profilo","👤","Profilo"]];
+  applyTheme(S.trip && S.trip.store_name);
+  root().innerHTML = `<div id="view"></div><nav class="tabs">${tabs.map(([k,i,l]) => `<button data-t="${k}" class="${S.tab===k?"on":""}"><span>${i}</span>${l}</button>`).join("")}</nav>`;
+  document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); });
+  ({ spesa: viewSpesa, lista: viewLista, storico: viewStorico, andamento: viewAndamento, profilo: viewProfilo })[S.tab]();
+}
+
+// ---------- spesa ----------
+const tripTotal = () => S.items.reduce((a, i) => a + Number(i.total), 0);
+const tripSaved = () => S.items.reduce((a, i) => a + Number(i.discount) * Number(i.qty), 0);
+
+async function viewSpesa() {
+  const v = $("#view");
+  if (!S.trip) {
+    const { data } = await sb.from("trips").select("store_name").eq("household_id", S.me.household_id).order("started_at", { ascending: false }).limit(200);
+    const stores = [...new Set((data||[]).map(x => x.store_name))];
+    v.innerHTML = `<div class="wrap"><h1>Nuova spesa</h1><div class="card">
+      <label>In quale supermercato sei?</label>
+      <input id="st" list="stl" placeholder="es. Conad, Lidl, Esselunga…" autocomplete="off"><datalist id="stl">${stores.map(s => `<option value="${esc(s)}">`).join("")}</datalist>
+      ${stores.slice(0,6).map(s => `<span class="chip" data-s="${esc(s)}" style="margin:0 6px 6px 0;padding:6px 12px;font-size:14px">${esc(s)}</span>`).join("")}
+      <div class="err" id="msg"></div><button class="btn" id="go" style="margin-top:10px">Inizia la spesa</button></div></div>`;
+    v.querySelectorAll("[data-s]").forEach(c => c.onclick = () => $("#st").value = c.dataset.s);
+    $("#go").onclick = async () => {
+      const name = $("#st").value.trim(); if (!name) return $("#msg").textContent = "Scrivi il supermercato.";
+      const { data: t, error } = await sb.from("trips").insert({ household_id: S.me.household_id, store_name: name }).select().single();
+      if (error) return $("#msg").textContent = error.message;
+      S.trip = t; S.items = []; render();
+    };
+    return;
+  }
+  const list = S.items.slice().reverse();
+  v.innerHTML = `<div class="wrap">
+    <div class="row"><div class="sp"><div class="mute">${esc(S.trip.store_name)} · ${S.items.length} prodotti</div></div>
+      <button class="btn sm sec" id="fin">Termina</button></div>
+    <div class="card" style="text-align:center;margin-top:10px"><div class="mute">Totale</div><div class="big" id="tot">${eur(tripTotal())}</div>
+      ${tripSaved() > 0 ? `<div class="disc">Hai risparmiato ${eur(tripSaved())} con gli sconti</div>` : ""}${budgetHtml()}</div>
+    ${listCard()}
+    ${list.length ? "" : `<p class="mute" style="text-align:center">Premi “Scansiona” e inquadra il cartellino del prezzo.</p>`}
+    ${list.map(i => `<div class="card row item${i.id === S.lastAdded ? " pop" : ""}" data-i="${i.id}" style="gap:12px;align-items:flex-start">
+      ${catIcon(i.category)}
+      <div class="sp"><div class="nm">${esc(i.name)}</div>
+      <div class="meta">${i.qty != 1 ? `${i.qty} × ${eur(i.unit_price)} · ` : ""}${i.ppu && i.ppu_unit !== "pz" ? `${eur(i.ppu)}/${i.ppu_unit} · ` : ""}${esc(S.names[i.added_by] || "")}</div>
+      <div class="tags">${catBadge(i.category)}${Number(i.discount) > 0 ? `<span class="dtag">−${eur(i.discount * i.qty)}</span>` : ""}</div></div>
+      <div class="price">${eur(i.total)}</div></div>`).join("")}
+  </div>
+  <div class="fab"><label class="btn" style="flex:1;margin:0">📷 Scansiona prodotto<input id="cam" type="file" accept="image/*" capture="environment" hidden></label>
+    <button class="btn sec" id="man" style="width:auto;padding:14px 18px">✍️</button></div>`;
+  countUp($("#tot"), tripTotal()); S.lastAdded = null;
+  const bb = $("#bud"); if (bb) bb.onclick = askBudget;
+  const lg = v.querySelector("[data-go]"); if (lg) lg.onclick = () => { S.tab = "lista"; render(); };
+  $("#cam").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) scan(f); };
+  $("#man").onclick = () => openSheet({});
+  $("#fin").onclick = finishTrip;
+  v.querySelectorAll("[data-i]").forEach(el => el.onclick = () => { const it = S.items.find(x => x.id === el.dataset.i); if (it) openSheet(it, true); });
+}
+
+async function doFinish(extra = {}) {
+  await sb.from("trips").update({ status: "done", ended_at: new Date().toISOString(), ...extra }).eq("id", S.trip.id);
+  confetti(); sfx("done"); _lastTot = 0;
+  S.trip = null; S.items = []; S.stats = null; render();
+}
+function finishTrip() {
+  S.sheet = true;
+  let bg = $(".sheet-bg"); if (!bg) { bg = document.createElement("div"); bg.className = "sheet-bg"; document.body.appendChild(bg); }
+  const close = () => { S.sheet = false; bg.remove(); };
+  const total = tripTotal(), saved = tripSaved();
+  const home = (err) => {
+    bg.innerHTML = `<div class="sheet"><b style="font-size:19px">Termina la spesa</b>
+      <div class="mute" style="margin-bottom:10px">${esc(S.trip.store_name)} · ${S.items.length} prodotti</div>
+      <div class="card" style="text-align:center"><div class="mute">Totale carrello</div><div class="big" style="font-size:38px">${eur(total)}</div>${saved > 0 ? `<div class="disc">Risparmiati ${eur(saved)} con gli sconti</div>` : ""}</div>
+      <p class="mute" style="margin:0 0 10px">Vuoi controllare che corrisponda allo scontrino? Fotografalo: confronto totale, sconti e righe.</p>
+      ${err ? `<div class="err">${esc(err)}</div>` : ""}
+      <label class="btn" style="margin:0 0 8px">📄 Confronta con lo scontrino<input id="rc" type="file" accept="image/*" capture="environment" hidden></label>
+      <button class="btn sec" id="f2">Termina senza scontrino</button>
+      <button class="btn sec" id="x" style="margin-top:8px">Annulla</button></div>`;
+    bg.querySelector("#x").onclick = close;
+    bg.querySelector("#f2").onclick = async () => { bg.querySelector("#f2").disabled = true; close(); await doFinish(); };
+    bg.querySelector("#rc").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (f) readReceipt(f); };
+  };
+  const readReceipt = async file => {
+    bg.innerHTML = `<div class="sheet" style="text-align:center;padding:36px 24px"><div class="scanbox" style="height:150px"><div class="laser"></div></div><p class="dots" style="margin:0 0 16px">Leggo lo scontrino</p><button class="btn sec" id="x">Annulla</button></div>`;
+    bg.querySelector("#x").onclick = close;
+    try {
+      const { b64 } = await resizeToB64(file, 2000);
+      const { data, error } = await sb.functions.invoke("scan-label", { body: { image: b64, mediaType: "image/jpeg", mode: "receipt" } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!$(".sheet-bg")) return;
+      const c = compareReceipt(data);
+      bg.innerHTML = `<div class="sheet"><b style="font-size:19px">Confronto con lo scontrino</b>${receiptHtml(c)}
+        <button class="btn" id="ok" style="margin-top:14px">Termina la spesa</button>
+        <button class="btn sec" id="back" style="margin-top:8px">Torna al carrello</button></div>`;
+      bg.querySelector("#back").onclick = close;
+      bg.querySelector("#ok").onclick = async () => { bg.querySelector("#ok").disabled = true; close(); await doFinish({ receipt_total: c.rTotal, receipt_discount: c.rDisc, receipt_checked_at: new Date().toISOString() }); };
+    } catch (e) {
+      let m = e.message || String(e);
+      try { const j = await e.context?.json?.(); if (j?.error) m = j.error; } catch {}
+      if ($(".sheet-bg")) home("Non sono riuscito a leggere lo scontrino (" + m + "). Riprova con una foto più nitida o termina senza.");
+    }
+  };
+  home();
+}
+
+// ---------- scansione ----------
+function resizeToB64(file, max = 1280) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      const d = c.toDataURL("image/jpeg", 0.82); res({ b64: d.split(",")[1], url: d });
+    };
+    img.onerror = rej; img.src = url;
+  });
+}
+
+async function scan(file) {
+  openSheet({}, false, true);
+  try {
+    const { b64, url } = await resizeToB64(file);
+    const { data, error } = await sb.functions.invoke("scan-label", { body: { image: b64, mediaType: "image/jpeg" } });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    const su = UNIT_BASE[data.size_unit] ? data.size_unit : null;
+    openSheet({ name: data.name, category: data.category, unit_price: data.unit_price, discount: data.discount, qty: data.qty || 1, size_value: numN(data.size_value), size_unit: su, _lp: numN(data.label_ppu), _lpu: data.label_ppu_unit, _tp: numN(data.typical_price), _thumb: url, _conf: data.confidence });
+  } catch (e) {
+    let m = e.message || String(e);
+    try { const j = await e.context?.json?.(); if (j?.error) m = j.error; } catch {}
+    openSheet({ _err: "Non sono riuscito a leggere l'etichetta (" + m + "). Compila a mano." });
+  }
+}
+
+function openSheet(it, editing = false, loading = false) {
+  S.sheet = true;
+  let bg = $(".sheet-bg"); if (!bg) { bg = document.createElement("div"); bg.className = "sheet-bg"; document.body.appendChild(bg); }
+  const close = () => { S.sheet = false; bg.remove(); };
+  if (loading) { bg.innerHTML = `<div class="sheet" style="text-align:center;padding:36px 24px"><div class="scanbox"><div class="laser"></div></div><p class="dots" style="margin:0 0 16px">Leggo l'etichetta</p><button class="btn sec" id="x">Annulla</button></div>`; bg.querySelector("#x").onclick = close; return; }
+  const q = it.qty ?? 1;
+  bg.innerHTML = `<div class="sheet">
+    <div class="row">${it._thumb ? `<img class="thumb" src="${it._thumb}">` : ""}<div class="sp"><b>${editing ? "Modifica prodotto" : "Conferma prodotto"}</b>
+      ${it._conf != null && it._conf < 0.6 ? `<div class="mute" style="color:var(--warn)">Lettura incerta: controlla i dati</div>` : ""}</div></div>
+    ${it._err ? `<div class="err">${esc(it._err)}</div>` : ""}
+    <label>Prodotto</label><input id="n" value="${esc(it.name || "")}" placeholder="Nome prodotto">
+    <label>Categoria</label><select id="c">${CATS.map(c => `<option value="${esc(c)}" ${c === (it.category || "Altro") ? "selected" : ""}>${catM(c)[0]}  ${esc(c)}</option>`).join("")}</select>
+    <div class="row"><div class="sp"><label>Prezzo unitario (€)</label><input id="p" inputmode="decimal" value="${it.unit_price ?? ""}"></div>
+      <div class="sp"><label>Sconto per pezzo (€)</label><input id="d" inputmode="decimal" value="${it.discount || ""}" placeholder="0"></div></div>
+    <div class="row"><div class="sp"><label>Formato (peso o volume)</label><input id="sv" inputmode="decimal" value="${it.size_value ?? ""}" placeholder="es. 500"></div>
+      <div class="sp"><label>Unità</label><select id="su"><option value="">—</option>${["g", "kg", "ml", "cl", "l", "pz"].map(u => `<option ${u === it.size_unit ? "selected" : ""}>${u}</option>`).join("")}</select></div></div>
+    <div id="insw"></div>
+    <div class="row" style="margin-bottom:8px"><label class="sp">Quantità</label><div class="stepper"><button id="m">−</button><b id="qv">${q}</b><button id="pl">+</button></div></div>
+    <div class="row" style="margin:6px 0 12px"><span class="sp mute">Totale riga</span><b id="lt" style="font-size:22px"></b></div>
+    <button class="btn" id="ok">${editing ? "Salva" : "Aggiungi al carrello"}</button>
+    ${editing ? `<button class="btn bad" id="del" style="margin-top:8px">Elimina</button>` : ""}
+    <button class="btn sec" id="x" style="margin-top:8px">Annulla</button></div>`;
+  let qty = q;
+  const calc = () => Math.max(0, qty * num($("#p").value) - qty * num($("#d").value));
+  const readF = () => ({ name: $("#n").value, unit_price: num($("#p").value), discount: num($("#d").value), size_value: numN($("#sv").value), size_unit: $("#su").value || null, lp: it._lp, lpu: it._lpu, tp: it._tp, id: it.id });
+  const upd = () => { $("#qv").textContent = qty; $("#lt").textContent = eur(calc()); const w = $("#insw"); if (w) w.innerHTML = insightHtml(readF()); };
+  ["#p", "#d", "#n", "#sv"].forEach(s => $(s).oninput = upd); $("#su").onchange = upd;
+  const fireRecent = () => {
+    if (!$("#insw") || editing || !it._thumb || !it.name) return;
+    const r = recentInfo(it.name, it.id); if (!r) return;
+    sfx("warn"); try { navigator.vibrate && navigator.vibrate([40, 60, 40]); } catch {}
+    toast("🔁 " + recentText(r));
+  };
+  if (!S.stats) getStats(true).then(() => { if ($("#insw")) { upd(); fireRecent(); } }); else fireRecent();
+  $("#m").onclick = () => { qty = Math.max(1, qty - 1); upd(); };
+  $("#pl").onclick = () => { qty += 1; upd(); };
+  $("#x").onclick = close; upd();
+  $("#ok").onclick = async () => {
+    const f = readF(), pp = calcPpu(Math.max(0, f.unit_price - f.discount), f.size_value, f.size_unit, f.lp, f.lpu);
+    const row = { name: $("#n").value.trim(), category: $("#c").value, unit_price: num($("#p").value), discount: num($("#d").value), qty,
+      size_value: f.size_value > 0 && f.size_unit ? f.size_value : null, size_unit: f.size_value > 0 && f.size_unit ? f.size_unit : null,
+      ppu: pp ? Math.round(pp.v * 10000) / 10000 : null, ppu_unit: pp ? pp.u : null };
+    if (!row.name) return alert("Scrivi il nome del prodotto.");
+    $("#ok").disabled = true; const before = tripTotal();
+    const r = editing ? await sb.from("items").update(row).eq("id", it.id).select().single()
+      : await sb.from("items").insert({ ...row, trip_id: S.trip.id, household_id: S.me.household_id }).select().single();
+    if (r.error) { $("#ok").disabled = false; return alert(r.error.message); }
+    if (editing) S.items = S.items.map(x => x.id === it.id ? r.data : x); else { S.items.push(r.data); S.lastAdded = r.data.id; }
+    try { navigator.vibrate && navigator.vibrate(15); } catch {}
+    let taken = null; if (!editing) { try { taken = await takeFromList(r.data); } catch {} }
+    const alerted = budgetCheck(before, tripTotal());
+    if (!alerted) sfx(editing ? "tap" : "add");
+    if (taken && !alerted) toast("✓ Tolto dalla lista: " + taken, true);
+    S.stats = null; close(); render();
+  };
+  if (editing) $("#del").onclick = async () => {
+    if (!confirm("Eliminare questo prodotto?")) return;
+    await sb.from("items").delete().eq("id", it.id); S.items = S.items.filter(x => x.id !== it.id); S.stats = null; close(); render();
+  };
+}
+
+
+
+// ---------- prezzo al kg, confronto prezzi, scontrino ----------
+const UNIT_BASE = { g: ["kg", .001], kg: ["kg", 1], ml: ["l", .001], cl: ["l", .01], l: ["l", 1], pz: ["pz", 1] };
+const numN = v => { if (v === null || v === undefined || v === "") return null; const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : null; };
+function calcPpu(fin, sv, su, lp, lpu) {
+  const b = UNIT_BASE[su];
+  if (b && sv > 0 && fin > 0) return { v: fin / (sv * b[1]), u: b[0] };
+  if (lp > 0 && (lpu === "kg" || lpu === "l")) return { v: lp, u: lpu };
+  return null;
+}
+const ppuTxt = p => p ? `${eur(p.v)}/${p.u}` : "";
+const stemSet = s => new Set(normW(s).filter(w => !/^\d/.test(w)).map(stemW));
+const inSet = (x, B) => [...B].some(y => sameW(x, y));
+function similar(a, b) { const A = stemSet(a), B = stemSet(b); if (!A.size || !B.size) return false; let n = 0; A.forEach(x => { if (inSet(x, B)) n++; }); return n / (A.size + B.size - n) >= .5; }
+function nameScore(a, b) { const A = stemSet(a), B = stemSet(b); if (!A.size || !B.size) return 0; let n = 0; A.forEach(x => { if (inSet(x, B)) n++; }); return n / Math.min(A.size, B.size); }
+
+function recentInfo(name, excludeId) {
+  if (!name || name.trim().length < 3) return null;
+  const st = S.stats, tripOf = st ? Object.fromEntries(st.trips.map(t => [t.id, t])) : {}, seen = new Set(), all = [];
+  (st ? st.items : []).forEach(i => { seen.add(i.id); all.push(i); });
+  S.items.forEach(i => { if (!seen.has(i.id)) all.push(i); });
+  let best = null;
+  for (const i of all) { if (i.id === excludeId || !i.created_at || !similar(i.name, name)) continue; if (!best || String(i.created_at) > String(best.created_at)) best = i; }
+  if (!best) return null;
+  const days = Math.max(0, Math.floor((Date.now() - new Date(best.created_at)) / 864e5));
+  const same = !!(S.trip && best.trip_id === S.trip.id);
+  if (!same && days > 30) return null;
+  return { days, same, qty: Number(best.qty) || 1, who: S.names[best.added_by] || "", store: tripOf[best.trip_id]?.store_name || (same ? S.trip.store_name : "") };
+}
+const whenTxt = d => d === 0 ? "oggi" : d === 1 ? "ieri" : d + " giorni fa";
+const recentText = r => r.same ? `Già nel carrello${r.qty > 1 ? " (×" + r.qty + ")" : ""}` : `Già comprato ${whenTxt(r.days)}${r.who || r.store ? " (" + [r.who, r.store].filter(Boolean).join(", ") + ")" : ""}`;
+
+function insightHtml(f) {
+  const fin = Math.max(0, (f.unit_price || 0) - (f.discount || 0));
+  const ppu = calcPpu(fin, f.size_value, f.size_unit, f.lp, f.lpu), out = [];
+  const rcn = recentInfo(f.name, f.id);
+  if (rcn) out.push(`<span class="ins warn">🔁 ${esc(recentText(rcn))}<small>${rcn.same ? "Lo hai già aggiunto a questa spesa" : `Ne hai ${rcn.qty > 1 ? rcn.qty + " pezzi" : "uno"} in casa, forse non serve ricomprarlo`}</small></span>`);
+  if (ppu) out.push(`<span class="ins">⚖️ ${ppuTxt(ppu)}</span>`);
+  if (fin > 0 && f.name && f.name.trim().length > 2) {
+    const st = S.stats, tripOf = st ? Object.fromEntries(st.trips.map(t => [t.id, t])) : {};
+    const hist = st ? st.items.filter(i => i.id !== f.id && Number(i.unit_price) > 0 && similar(i.name, f.name)) : [];
+    if (hist.length) {
+      const byP = ppu ? hist.filter(h => h.ppu_unit === ppu.u && Number(h.ppu) > 0) : [];
+      const useP = byP.length > 0;
+      const vals = (useP ? byP : hist).map(h => ({ v: useP ? Number(h.ppu) : Number(h.unit_price) - Number(h.discount), h }));
+      const cur = useP ? ppu.v : fin, suf = useP ? "/" + ppu.u : "";
+      const avg = vals.reduce((a, x) => a + x.v, 0) / vals.length, best = vals.reduce((m, x) => x.v < m.v ? x : m);
+      const d = (cur - avg) / avg * 100, n = vals.length;
+      if (d > 10) out.push(`<span class="ins bad">⚠️ Più caro del solito (+${d.toFixed(0)}%)<small>Di solito ${eur(avg)}${suf} · media di ${n} acquist${n === 1 ? "o" : "i"}</small></span>`);
+      else if (d < -10) out.push(`<span class="ins good">✅ Meno del solito (${d.toFixed(0)}%)<small>Di solito ${eur(avg)}${suf} · media di ${n} acquist${n === 1 ? "o" : "i"}</small></span>`);
+      else out.push(`<span class="ins">👌 In linea con il solito<small>Di solito ${eur(avg)}${suf} · ${n} acquist${n === 1 ? "o" : "i"}</small></span>`);
+      const bs = tripOf[best.h.trip_id]?.store_name;
+      if (best.v < cur * .97) out.push(`<span class="ins warn">💡 Prezzo migliore: ${eur(best.v)}${suf}${bs ? " da " + esc(bs) : ""}</span>`);
+    } else if (f.tp > 0) {
+      const d = (fin / f.tp - 1) * 100;
+      if (d > 25) out.push(`<span class="ins bad">⚠️ Sembra caro (+${d.toFixed(0)}%)<small>Di solito circa ${eur(f.tp)} · stima indicativa</small></span>`);
+      else if (d < -20) out.push(`<span class="ins good">✅ Ottimo prezzo (${d.toFixed(0)}%)<small>Di solito circa ${eur(f.tp)} · stima indicativa</small></span>`);
+      else out.push(`<span class="ins">👌 Prezzo nella norma<small>Di solito circa ${eur(f.tp)} · stima indicativa</small></span>`);
+    }
+  }
+  return out.join("");
+}
+function compareReceipt(rc) {
+  const rItems = (rc.items || []).map(x => ({ name: String(x.name || ""), qty: numN(x.qty) || 1, price: numN(x.price) || 0 }));
+  const pairs = [];
+  S.items.forEach((a, ai) => rItems.forEach((r, ri) => { const sc = nameScore(a.name, r.name); if (sc >= .5) pairs.push({ ai, ri, sc: sc + (Math.abs(Number(a.total) - r.price) < .011 ? .5 : 0) }); }));
+  pairs.sort((x, y) => y.sc - x.sc);
+  const uA = new Set(), uR = new Set(), matched = [];
+  for (const p of pairs) { if (uA.has(p.ai) || uR.has(p.ri)) continue; uA.add(p.ai); uR.add(p.ri); matched.push({ a: S.items[p.ai], r: rItems[p.ri] }); }
+  return {
+    rTotal: numN(rc.total), aTotal: tripTotal(), rDisc: numN(rc.discount_total), aDisc: tripSaved(),
+    diffs: matched.filter(m => Math.abs(Number(m.a.total) - m.r.price) > .011),
+    onlyApp: S.items.filter((_, i) => !uA.has(i)), onlyRec: rItems.filter((_, i) => !uR.has(i)), nMatched: matched.length, nRec: rItems.length
+  };
+}
+function receiptHtml(c) {
+  const dT = c.rTotal == null ? null : c.rTotal - c.aTotal, okT = dT != null && Math.abs(dT) < .02;
+  const hasD = c.rDisc != null, dD = hasD ? c.rDisc - c.aDisc : 0, okD = hasD && Math.abs(dD) < .02;
+  const line = (a, b) => `<div class="ln"><span>${a}</span><b>${b}</b></div>`;
+  return `<div class="rcmp">
+    <div class="ins ${dT == null ? "warn" : okT ? "good" : "bad"}" style="font-size:15px">${dT == null ? "⚠️ Non sono riuscito a leggere il totale" : okT ? "✅ Il totale corrisponde" : `⚠️ Differenza di ${eur(Math.abs(dT))} (${dT > 0 ? "lo scontrino è più alto" : "lo scontrino è più basso"})`}</div>
+    ${line("Totale scontrino", c.rTotal == null ? "—" : eur(c.rTotal))}${line("Totale carrello", eur(c.aTotal))}
+    <h4>Sconti</h4>
+    ${line("Sullo scontrino", hasD ? eur(c.rDisc) : "non indicati")}${line("Nel carrello", eur(c.aDisc))}
+    ${hasD ? `<div class="ins ${okD ? "good" : "warn"}">${okD ? "✅ Gli sconti corrispondono" : `⚠️ Sconti diversi di ${eur(Math.abs(dD))}`}</div>` : ""}
+    ${c.diffs.length ? `<h4>Prezzo diverso (${c.diffs.length})</h4>${c.diffs.slice(0, 8).map(m => line(esc(m.a.name), `${eur(m.a.total)} → ${eur(m.r.price)}`)).join("")}` : ""}
+    ${c.onlyRec.length ? `<h4>Sullo scontrino, non nel carrello (${c.onlyRec.length})</h4>${c.onlyRec.slice(0, 8).map(r => line(esc(r.name), eur(r.price))).join("")}` : ""}
+    ${c.onlyApp.length ? `<h4>Nel carrello, non sullo scontrino (${c.onlyApp.length})</h4>${c.onlyApp.slice(0, 8).map(i => line(esc(i.name), eur(i.total))).join("")}` : ""}
+    <p class="mute" style="font-size:12px;margin:12px 0 0">Righe riconosciute: ${c.nMatched} su ${c.nRec} dello scontrino. Il confronto è automatico: controlla a occhio le differenze.</p></div>`;
+}
+
+// ---------- lista della spesa ----------
+const normW = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(w => w.length >= 3);
+const stemW = w => w.length > 3 ? w.replace(/[aeio]$/, "") : w;
+const sameW = (a, b) => { const x = stemW(a), y = stemW(b); return x === y || (Math.min(x.length, y.length) >= 3 && (x.startsWith(y) || y.startsWith(x))); };
+async function takeFromList(it) {
+  const T = normW(it.name); let best = null, score = 0;
+  for (const e of S.list) {
+    const E = normW(e.name); if (!E.length) continue;
+    if (E.every(w => T.some(t => sameW(t, w))) && E.length > score) { best = e; score = E.length; }
+  }
+  if (!best) return null;
+  const left = Number(best.qty) - Number(it.qty);
+  if (left > 0) { await sb.from("shopping_list").update({ qty: left }).eq("id", best.id); best.qty = left; }
+  else { await sb.from("shopping_list").delete().eq("id", best.id); S.list = S.list.filter(x => x.id !== best.id); }
+  return best.name;
+}
+function listCard() {
+  if (!S.list.length) return "";
+  const show = S.list.slice(0, 8);
+  return `<div class="card" data-go style="cursor:pointer"><div class="row" style="margin-bottom:8px"><div class="sp mute">🧺 Ancora da prendere · ${S.list.length}</div><span class="mute">Apri ›</span></div>
+    <div class="todo">${show.map(e => `<span class="cat" style="--h:215">${esc(e.name)}${e.qty != 1 ? " ×" + e.qty : ""}</span>`).join("")}${S.list.length > show.length ? `<span class="cat" style="--h:215">+${S.list.length - show.length}</span>` : ""}</div></div>`;
+}
+function viewLista() {
+  const v = $("#view");
+  v.innerHTML = `<div class="wrap"><h1>Lista della spesa</h1>
+    <div class="card"><div class="row"><input id="ln" placeholder="Es. latte, 2 yogurt…" autocomplete="off" enterkeyhint="done" style="margin:0"><button class="btn sm" id="la" style="flex:none;font-size:20px;padding:8px 16px">＋</button></div></div>
+    ${S.list.length ? "" : `<p class="mute" style="text-align:center">La lista è vuota. Scrivi cosa ti serve: quando scansioni quel prodotto in negozio, sparisce da qui da solo. Lista condivisa con il tuo partner.</p>`}
+    ${S.list.map(e => `<div class="card row lrow" data-l="${e.id}"><button class="lck" aria-label="Preso">✓</button>
+      <div class="sp"><div class="nm2">${esc(e.name)}</div><div class="mute">${esc(S.names[e.added_by] || "")}</div></div>
+      ${e.qty != 1 ? `<span class="cat" style="--h:142">×${e.qty}</span>` : ""}<button class="ldel" aria-label="Elimina">✕</button></div>`).join("")}</div>`;
+  const add = async () => {
+    const raw = $("#ln").value.trim(); if (!raw) return;
+    const m = raw.match(/^(\d+)\s*[x×]?\s+(.+)$/i);
+    const row = m ? { name: m[2].trim(), qty: Math.min(99, parseInt(m[1], 10) || 1) } : { name: raw, qty: 1 };
+    $("#la").disabled = true;
+    const { data, error } = await sb.from("shopping_list").insert({ ...row, household_id: S.me.household_id }).select().single();
+    if (error) { $("#la").disabled = false; return toast(error.message); }
+    S.list.push(data); sfx("tap"); viewLista(); const n = $("#ln"); if (n) n.focus();
+  };
+  $("#la").onclick = add;
+  $("#ln").onkeydown = e => { if (e.key === "Enter") add(); };
+  v.querySelectorAll("[data-l]").forEach(el => {
+    const id = el.dataset.l;
+    const drop = async cls => {
+      el.classList.add(cls); sfx("tap");
+      S.list = S.list.filter(x => x.id !== id);
+      sb.from("shopping_list").delete().eq("id", id).then(() => {});
+      setTimeout(() => { if (S.tab === "lista") viewLista(); }, 420);
+    };
+    el.querySelector(".lck").onclick = () => drop("done");
+    el.querySelector(".ldel").onclick = () => drop("gone");
+  });
+}
+
+// ---------- storico ----------
+async function viewStorico() {
+  const v = $("#view"); v.innerHTML = `<div class="wrap"><h1>Storico</h1><p class="mute">Carico…</p></div>`;
+  const st = await getStats(); if (!st) return;
+  const done = st.trips.filter(t => t.status === "done").sort((a, b) => b.started_at.localeCompare(a.started_at));
+  const seg = `<div class="seg"><button data-s="spese" class="${S.stTab !== "confronto" ? "on" : ""}">🧾 Spese</button><button data-s="confronto" class="${S.stTab === "confronto" ? "on" : ""}">⚖️ Supermercati</button></div>`;
+  const bindSeg = () => v.querySelectorAll(".seg button").forEach(b => b.onclick = () => { S.stTab = b.dataset.s; viewStorico(); });
+  if (S.stTab === "confronto") {
+    const tripOf = Object.fromEntries(st.trips.map(t => [t.id, t])), byS = {};
+    st.items.forEach(i => { const t = tripOf[i.trip_id]; if (!t) return; const x = byS[t.store_name] ??= { tot: 0, trips: new Set() }; x.tot += Number(i.total); x.trips.add(t.id); });
+    const stores = Object.entries(byS).sort((a, b) => b[1].tot - a[1].tot);
+    v.innerHTML = `<div class="wrap"><h1>Storico</h1>${seg}${stores.length ? storeCompareHtml(st, tripOf, stores) : `<p class="mute">Nessuna spesa registrata.</p>`}</div>`;
+    return bindSeg();
+  }
+  v.innerHTML = `<div class="wrap"><h1>Storico</h1>${seg}${done.length ? "" : `<p class="mute">Nessuna spesa terminata.</p>`}
+    ${done.map(t => { const its = st.items.filter(i => i.trip_id === t.id); const tot = its.reduce((a, i) => a + Number(i.total), 0);
+      return `<div class="card" data-t="${t.id}"><div class="row"><div class="sp"><b>${esc(t.store_name)}</b><div class="mute">${new Date(t.started_at).toLocaleDateString("it-IT",{weekday:"short",day:"numeric",month:"short",year:"numeric"})} · ${its.length} prodotti</div>${t.receipt_total != null ? (Math.abs(Number(t.receipt_total) - tot) < .02 ? `<span class="rbadge ok">🧾 Scontrino corrisponde</span>` : `<span class="rbadge ko">🧾 Scontrino ${eur(t.receipt_total)} · differenza ${eur(Math.abs(Number(t.receipt_total) - tot))}</span>`) : ""}</div><div class="price">${eur(tot)}</div></div>
+      <div class="det" hidden style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px">${its.map(i => `<div class="row" style="margin:4px 0"><div class="sp">${catM(i.category)[0]} ${esc(i.name)} <span class="mute">${i.qty != 1 ? "×" + i.qty : ""} ${esc(S.names[i.added_by] || "")}</span></div><div class="price">${eur(i.total)}</div></div>`).join("")}</div></div>`; }).join("")}</div>`;
+  v.querySelectorAll("[data-t]").forEach(c => c.onclick = () => { const d = c.querySelector(".det"); d.hidden = !d.hidden; });
+  bindSeg();
+}
+
+// ---------- andamento ----------
+async function fetchAll(q) {
+  let all = [], from = 0;
+  for (;;) { const { data, error } = await q().range(from, from + 999); if (error) throw error; all = all.concat(data); if (data.length < 1000) break; from += 1000; }
+  return all;
+}
+async function getStats(quiet) {
+  if (S.stats) return S.stats;
+  try {
+    const trips = await fetchAll(() => sb.from("trips").select("*").eq("household_id", S.me.household_id).order("started_at"));
+    const items = await fetchAll(() => sb.from("items").select("*").eq("household_id", S.me.household_id).order("created_at"));
+    return S.stats = { trips, items };
+  } catch (e) { if (!quiet) $("#view").innerHTML = `<div class="wrap"><div class="err">${esc(e.message)}</div></div>`; return null; }
+}
+const bars = (rows, fmt = eur) => { const mx = Math.max(...rows.map(r => r[1]), 1); return `<div class="bars">${rows.map(([l, v, s]) => `<div class="r"><div class="rt"><span class="rl">${esc(l)}</span><span class="t price">${fmt(v)}</span></div><div class="bar" style="width:${(v / mx * 100).toFixed(1)}%"></div>${s ? `<div class="mute" style="font-size:12px;margin-top:4px">${s}</div>` : ""}</div>`).join("")}</div>`; };
+const catList = (rows) => { const tot = rows.reduce((a, r) => a + r[1], 0) || 1, mx = Math.max(...rows.map(r => r[1]), 1);
+  return `<div class="catlist">${rows.map(([c, v]) => `<div class="cr"><div class="top">${catIcon(c, true)}<div class="nm">${esc(c)}<div class="pc">${(v / tot * 100).toFixed(0)}% della spesa</div></div><div class="am">${eur(v)}</div></div><div class="trk"><i style="width:${(v / mx * 100).toFixed(1)}%"></i></div></div>`).join("")}</div>`; };
+
+
+// ---------- confronto supermercati ----------
+const fmtPct = d => (d > 0 ? "+" : "") + d.toFixed(0) + "%";
+function storeCompareHtml(st, tripOf, stores) {
+  let html = "";
+  if (stores.length) {
+    const [n, sx] = stores[0];
+    html += `<div class="card"><div class="row" style="gap:12px"><div class="cico" style="--h:20">💸</div><div class="sp"><div class="mute">Dove spendi di più</div><b style="font-size:19px">${esc(n)}</b>
+      <div class="mute">${eur(sx.tot)} in ${sx.trips.size} spes${sx.trips.size === 1 ? "a" : "e"} · media ${eur(sx.tot / sx.trips.size)}</div></div></div></div>`;
+  }
+  const cl = [];
+  st.items.forEach(i => {
+    const t = tripOf[i.trip_id]; if (!t) return;
+    const fin = Number(i.unit_price) - Number(i.discount); if (!(fin > 0)) return;
+    let c = cl.find(c => similar(c.rep, i.name));
+    if (!c) { c = { rep: i.name, e: [] }; cl.push(c); }
+    c.e.push({ store: t.store_name, fin, ppu: Number(i.ppu) > 0 ? Number(i.ppu) : null, pu: i.ppu_unit });
+  });
+  const rows = [];
+  cl.forEach(c => {
+    const useP = c.e.every(x => x.ppu && x.pu === c.e[0].pu), per = {};
+    c.e.forEach(x => (per[x.store] ??= []).push(useP ? x.ppu : x.fin));
+    const ss = Object.keys(per); if (ss.length < 2) return;
+    const avg = Object.fromEntries(ss.map(k => [k, per[k].reduce((a, b) => a + b, 0) / per[k].length]));
+    rows.push({ name: c.rep, avg, mean: ss.reduce((a, k) => a + avg[k], 0) / ss.length, suf: useP ? "/" + c.e[0].pu : "" });
+  });
+  if (!rows.length) return html + `<div class="card"><div class="mute">⚖️ Per confrontare i supermercati servono gli stessi prodotti comprati in almeno due negozi diversi. Più spese registri, più il confronto diventa preciso.</div></div>`;
+  const idx = {};
+  rows.forEach(r => Object.keys(r.avg).forEach(k => (idx[k] ??= []).push(r.avg[k] / r.mean)));
+  const list = Object.entries(idx).map(([k, a]) => ({ k, d: (a.reduce((x, y) => x + y, 0) / a.length - 1) * 100, n: a.length })).sort((a, b) => b.d - a.d);
+  const dear = list[0], cheap = list[list.length - 1];
+  html += `<div class="card"><div class="row" style="gap:12px;margin-bottom:10px"><div class="cico" style="--h:200">⚖️</div><div class="sp"><b>Confronto sugli stessi prodotti</b><div class="mute">${rows.length} prodott${rows.length === 1 ? "o" : "i"} comprat${rows.length === 1 ? "o" : "i"} in più negozi</div></div></div>
+    <div class="ins bad">📈 Più caro: ${esc(dear.k)} (${fmtPct(dear.d)} rispetto alla media)</div>
+    <div class="ins good">📉 Più conveniente: ${esc(cheap.k)} (${fmtPct(cheap.d)} rispetto alla media)</div>
+    <div class="bars" style="margin-top:12px">${list.map(x => `<div class="r"><div class="rt"><span class="rl">${esc(x.k)}</span><span class="t price" style="color:${x.d > 2 ? "var(--bad)" : x.d < -2 ? "var(--accent)" : "inherit"}">${fmtPct(x.d)}</span></div><div class="mute" style="font-size:12px">su ${x.n} prodott${x.n === 1 ? "o" : "i"}</div></div>`).join("")}</div>`;
+  const gaps = rows.map(r => { const ks = Object.keys(r.avg).sort((a, b) => r.avg[a] - r.avg[b]), lo = ks[0], hi = ks[ks.length - 1];
+    return { name: r.name, lo, hi, vl: r.avg[lo], vh: r.avg[hi], suf: r.suf, g: (r.avg[hi] / r.avg[lo] - 1) * 100 }; }).filter(g => g.g > 3).sort((a, b) => b.g - a.g).slice(0, 5);
+  if (gaps.length) html += `<div class="mute" style="margin:16px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em">Maggiori differenze</div>` + gaps.map(g => `<div style="margin:10px 0"><div class="row"><div class="sp"><b>${esc(g.name)}</b></div><span class="cat" style="--h:20">+${g.g.toFixed(0)}%</span></div><div class="mute" style="font-size:13px">${esc(g.lo)} ${eur(g.vl)}${g.suf} · ${esc(g.hi)} ${eur(g.vh)}${g.suf}</div></div>`).join("");
+  return html + `<p class="mute" style="font-size:12px;margin:12px 0 0">Il confronto usa il prezzo medio (al kg o al litro quando noto, già scontato) dei prodotti simili.</p></div>`;
+}
+
+async function viewAndamento() {
+  const v = $("#view"); v.innerHTML = `<div class="wrap"><h1>Andamento</h1><p class="mute">Calcolo…</p></div>`;
+  const st = await getStats(); if (!st) return;
+  const tripOf = Object.fromEntries(st.trips.map(t => [t.id, t]));
+  if (!st.items.length) return v.innerHTML = `<div class="wrap"><h1>Andamento</h1><p class="mute">Registra qualche spesa e qui compariranno i grafici.</p></div>`;
+  // mesi
+  const byM = {}; st.items.forEach(i => { const t = tripOf[i.trip_id]; if (!t) return; const k = t.started_at.slice(0, 7); byM[k] = (byM[k] || 0) + Number(i.total); });
+  const months = Object.keys(byM).sort().slice(-6).map(k => [new Date(k + "-01").toLocaleDateString("it-IT", { month: "short", year: "2-digit" }), byM[k]]);
+  // supermercati
+  const byS = {};
+  st.items.forEach(i => { const t = tripOf[i.trip_id]; if (!t) return; const s = byS[t.store_name] ??= { tot: 0, saved: 0, trips: new Set() }; s.tot += Number(i.total); s.saved += Number(i.discount) * Number(i.qty); s.trips.add(t.id); });
+  const stores = Object.entries(byS).sort((a, b) => b[1].tot - a[1].tot);
+  // categorie
+  const byC = {}; st.items.forEach(i => byC[i.category] = (byC[i.category] || 0) + Number(i.total));
+  const cats = Object.entries(byC).sort((a, b) => b[1] - a[1]);
+  // totali
+  const tot = st.items.reduce((a, i) => a + Number(i.total), 0), saved = st.items.reduce((a, i) => a + Number(i.discount) * Number(i.qty), 0);
+  const nTrips = new Set(st.items.map(i => i.trip_id)).size;
+  // prodotti ricorrenti
+  const byP = {}; st.items.forEach(i => { const k = i.name.toLowerCase().trim(); (byP[k] ??= []).push(i); });
+  const rec = Object.values(byP).filter(a => a.length >= 2 && a.some(x => Number(x.unit_price) > 0)).map(a => {
+    const pr = a.map(x => Number(x.unit_price) - Number(x.discount)).filter(p => p > 0); const last = a[a.length - 1];
+    const lastP = Number(last.unit_price) - Number(last.discount), avg = pr.reduce((x, y) => x + y, 0) / pr.length;
+    const min = a.reduce((m, x) => (Number(x.unit_price) - Number(x.discount)) < (Number(m.unit_price) - Number(m.discount)) ? x : m);
+    return { name: last.name, n: a.length, lastP, avg, minP: Number(min.unit_price) - Number(min.discount), minStore: tripOf[min.trip_id]?.store_name || "", lastStore: tripOf[last.trip_id]?.store_name || "" };
+  }).sort((a, b) => b.n - a.n).slice(0, 12);
+  v.innerHTML = `<div class="wrap"><h1>Andamento</h1>
+    <div class="card row" style="text-align:center"><div class="sp"><div class="mute">Speso</div><b style="font-size:20px">${eur(tot)}</b></div><div class="sp"><div class="mute">Spese</div><b style="font-size:20px">${nTrips}</b></div><div class="sp"><div class="mute">Media</div><b style="font-size:20px">${eur(tot / Math.max(nTrips, 1))}</b></div><div class="sp"><div class="mute">Risparmiato</div><b style="font-size:20px;color:var(--accent)">${eur(saved)}</b></div></div>
+    <h2>Per mese</h2><div class="card">${bars(months)}</div>
+    <h2>Per supermercato</h2><div class="card">${bars(stores.map(([n, s]) => [n, s.tot, `${s.trips.size} spese · media ${eur(s.tot / s.trips.size)} · sconti ${eur(s.saved)}`]))}</div>
+    <h2>Per categoria</h2><div class="card">${catList(cats)}</div>
+    ${rec.length ? `<h2>Prodotti che ricompri</h2><div class="card">${rec.map(r => { const d = r.lastP - r.avg; return `<div style="margin:8px 0"><div class="row"><div class="sp">${esc(r.name)} <span class="mute">×${r.n}</span></div><div class="price">${eur(r.lastP)} <span class="${d > 0.005 ? "up" : d < -0.005 ? "down" : "mute"}" style="font-size:12px">${d > 0.005 ? "▲" : d < -0.005 ? "▼" : "="} vs media ${eur(r.avg)}</span></div></div>
+      <div class="mute" style="font-size:12px">Prezzo migliore ${eur(r.minP)}${r.minStore ? " da " + esc(r.minStore) : ""}</div></div>`; }).join("")}</div>` : ""}
+  </div>`;
+}
+
+// ---------- profilo ----------
+function viewProfilo() {
+  $("#view").innerHTML = `<div class="wrap"><h1>Profilo</h1><div class="card">
+    <div class="mute">Account</div><div>${esc(S.user.email)}</div><div class="mute" style="margin-top:10px">Nome</div><div>${esc(S.me.display_name)}</div></div>
+    <div class="card"><div class="mute">Gruppo “${esc(S.hh.name)}”</div>
+    <div class="mute" style="margin-top:8px">Codice da dare al partner per entrare</div><div style="font-size:34px;font-weight:700;letter-spacing:.15em">${esc(S.hh.invite_code)}</div>
+    <div class="mute" style="margin-top:8px">Membri: ${Object.values(S.names).map(esc).join(", ")}</div></div>
+    <div class="card"><div class="row"><div class="sp"><div>Suoni</div><div class="mute">Effetti sonori quando aggiungi prodotti</div></div><button class="btn sm sec" id="snd">${pref.get("sound", true) ? "Attivi" : "Spenti"}</button></div>
+    <div class="row" style="margin-top:12px"><div class="sp"><div>Budget spesa</div><div class="mute">Su questo dispositivo</div></div><button class="btn sm sec" id="bg">${pref.get("budget", 0) ? eur(pref.get("budget", 0)) : "Imposta"}</button></div></div>
+    <button class="btn sec" id="lo">Esci</button></div>`;
+  $("#snd").onclick = () => { pref.set("sound", !pref.get("sound", true)); viewProfilo(); sfx("add"); };
+  $("#bg").onclick = askBudget;
+  $("#lo").onclick = () => sb.auth.signOut();
+}
+</script>
+</body>
+</html>
+<script async src="/.netlify/scripts/hud?variant=public" data-nf-variant="public" data-netlify-site-id="55196860-22c9-46ae-af12-eb88b9df04df" data-app-host="app.netlify.com" data-account-tier="free"></script>
